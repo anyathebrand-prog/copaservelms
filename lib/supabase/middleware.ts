@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { requireEnv } from "@/lib/env";
+
+let warned = false;
 
 /**
  * Refresh the Supabase session on every matched request.
@@ -14,11 +15,32 @@ export async function updateSession(request: NextRequest): Promise<{
   response: NextResponse;
   userId: string | null;
 }> {
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Degrade rather than throw when auth is unconfigured. Middleware runs on
+  // every request, so throwing here would take the public marketing site and
+  // every other unauthenticated page down with it. Reporting "signed out"
+  // fails closed: protected routes still redirect to login, and nothing
+  // privileged is exposed.
+  if (!url || !anonKey) {
+    if (!warned) {
+      warned = true;
+      console.warn(
+        "[auth] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are not set. " +
+          "Every request is being treated as signed out; sign-in will not work until they are configured.",
+      );
+    }
+    return { response, userId: null };
+  }
+
+  let mutableResponse = response;
 
   const supabase = createServerClient(
-    requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
@@ -28,9 +50,9 @@ export async function updateSession(request: NextRequest): Promise<{
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
-          response = NextResponse.next({ request });
+          mutableResponse = NextResponse.next({ request });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            mutableResponse.cookies.set(name, value, options);
           }
         },
       },
@@ -43,5 +65,5 @@ export async function updateSession(request: NextRequest): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { response, userId: user?.id ?? null };
+  return { response: mutableResponse, userId: user?.id ?? null };
 }

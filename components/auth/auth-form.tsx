@@ -21,7 +21,7 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   { id: "azure", label: "Microsoft" },
 ];
 
-export function AuthForm({ mode }: { mode: Mode }) {
+export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/student";
@@ -36,14 +36,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
   );
   const [notice, setNotice] = useState<string | null>(null);
 
-  const supabase = createSupabaseBrowserClient();
-
   // Only relative paths survive, or a crafted ?next= becomes an open redirect.
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/student";
   const callbackUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?next=${encodeURIComponent(safeNext)}`;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    const supabase = createSupabaseBrowserClient();
     setPending(true);
     setError(null);
     setNotice(null);
@@ -74,6 +73,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   async function handleMagicLink() {
     if (!email) return setError("Enter your email address first.");
+    const supabase = createSupabaseBrowserClient();
     setPending(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOtp({
@@ -86,6 +86,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   async function handleOAuth(provider: Provider) {
+    const supabase = createSupabaseBrowserClient();
     setPending(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -96,6 +97,26 @@ export function AuthForm({ mode }: { mode: Mode }) {
       setPending(false);
       setError(error.message);
     }
+  }
+
+  if (!configured) {
+    return (
+      <div className="glass-panel rounded-2xl p-8">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Sign-in unavailable</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Authentication is not configured for this deployment yet. Set{" "}
+          <code className="rounded bg-surface-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
+          and{" "}
+          <code className="rounded bg-surface-muted px-1 py-0.5 text-xs">
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+          </code>{" "}
+          to enable it.
+        </p>
+        <Link href="/" className="mt-6 inline-block text-sm font-medium text-brand hover:underline">
+          ← Back to home
+        </Link>
+      </div>
+    );
   }
 
   return (
