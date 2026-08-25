@@ -63,7 +63,7 @@ cd copaserve
 npm install
 
 # Configure environment
-cp .env.example .env.local
+cp .env.example .env
 # Fill in Supabase URL/keys, and other service credentials as integrations come online
 
 # Set up the database
@@ -82,7 +82,8 @@ App runs at `http://localhost:3000`.
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-only) |
-| `DATABASE_URL` | Prisma connection string |
+| `DATABASE_URL` | Prisma connection string (Supabase pooled, port 6543) |
+| `DIRECT_URL` | Direct Postgres connection (port 5432) — required by Prisma Migrate |
 | `RESEND_API_KEY` | Email delivery (planned) |
 | `TERMII_API_KEY` | SMS delivery (planned) |
 | `PAYSTACK_SECRET_KEY` | Payments (planned) |
