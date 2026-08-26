@@ -6,6 +6,9 @@
  * resolution to a rights request always leaves an audit record.
  *
  *   LOCAL=postgres://... DATABASE_URL=$LOCAL npx tsx scripts/verify-privacy.ts
+ *
+ * Every fixture is namespaced with a per-run suffix and removed afterwards, so
+ * this leaves no residue. Cleanup runs even when an assertion fails.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
@@ -24,8 +27,30 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 
 const RUN = Math.random().toString(36).slice(2, 8);
 const results: string[] = [];
+
+// Tracked so cleanup can remove exactly what this run created.
+const createdUsers: string[] = [];
+const createdRequests: string[] = [];
 function check(name: string, pass: boolean, detail: string) {
   results.push(`${pass ? "PASS" : "FAIL"}  ${name} — ${detail}`);
+}
+
+/**
+ * Remove this run's fixtures.
+ *
+ * ConsentLog uses onDelete: Restrict — deliberately, so real history cannot be
+ * cascaded away — so those rows are deleted explicitly before the users. Audit
+ * entries are removed by entityId for the same reason.
+ */
+async function cleanup(userIds: string[], requestIds: string[]) {
+  if (userIds.length === 0) return;
+
+  await prisma.auditLog.deleteMany({
+    where: { OR: [{ actorId: { in: userIds } }, { entityId: { in: [...userIds, ...requestIds] } }] },
+  });
+  await prisma.consentLog.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.dataSubjectRequest.deleteMany({ where: { userId: { in: userIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 }
 
 async function main() {
@@ -38,6 +63,8 @@ async function main() {
     },
   });
 
+  createdUsers.push(subject.id);
+
   const other = await prisma.user.create({
     data: {
       email: `bystander-${RUN}@demo.local`,
@@ -45,6 +72,8 @@ async function main() {
       profile: { create: { firstName: "Someone", lastName: "Else" } },
     },
   });
+
+  createdUsers.push(other.id);
 
   const admin = await prisma.user.create({
     data: {
@@ -54,6 +83,8 @@ async function main() {
       roles: { create: { role: { connect: { name: "ADMIN" } } } },
     },
   });
+
+  createdUsers.push(admin.id);
 
   // --- consent ------------------------------------------------------------
   const fresh = await getConsentState(subject.id);
@@ -92,6 +123,7 @@ async function main() {
   // --- data requests ------------------------------------------------------
   const raised = await createDataRequest(subject.id, "ERASURE", "Please delete my account.");
   check("erasure request is raised", raised.ok, raised.ok ? raised.id : `error=${raised.error}`);
+  if (raised.ok) createdRequests.push(raised.id);
 
   const duplicate = await createDataRequest(subject.id, "ERASURE", "Again");
   check("duplicate open request is refused", !duplicate.ok && duplicate.error === "DUPLICATE",
@@ -100,6 +132,7 @@ async function main() {
   const differentType = await createDataRequest(subject.id, "CORRECTION", "My surname is misspelt.");
   check("a different request type is still allowed", differentType.ok,
     differentType.ok ? "created" : `error=${differentType.error}`);
+  if (differentType.ok) createdRequests.push(differentType.id);
 
   const noResolution = await resolveDataRequest(admin.id, raised.ok ? raised.id : "", "COMPLETED", "   ");
   check("resolving without a written outcome is refused",
@@ -129,6 +162,7 @@ async function main() {
   // --- export -------------------------------------------------------------
   const otherRequest = await createDataRequest(other.id, "ACCESS", "Bystander's own request");
   check("bystander fixture created", otherRequest.ok, otherRequest.ok ? "ok" : "failed");
+  if (otherRequest.ok) createdRequests.push(otherRequest.id);
 
   const exported = await exportUserData(subject.id);
   const serialised = JSON.stringify(exported);
@@ -151,8 +185,22 @@ async function main() {
   console.log(results.join("\n"));
   const passed = results.filter((r) => r.startsWith("PASS")).length;
   console.log(`\n${passed}/${results.length} passed`);
-  await prisma.$disconnect();
-  process.exit(passed === results.length ? 0 : 1);
+  return passed === results.length;
 }
 
-main();
+main()
+  .then(async (ok) => {
+    await cleanup(createdUsers, createdRequests);
+    console.log(`cleaned up ${createdUsers.length} fixture user(s)`);
+    await prisma.$disconnect();
+    process.exit(ok ? 0 : 1);
+  })
+  .catch(async (error) => {
+    console.error(error);
+    // Cleanup runs even on failure, so a half-finished run leaves nothing behind.
+    await cleanup(createdUsers, createdRequests).catch((e) =>
+      console.error("cleanup failed — remove fixtures matching", RUN, ":", (e as Error).message),
+    );
+    await prisma.$disconnect();
+    process.exit(1);
+  });
