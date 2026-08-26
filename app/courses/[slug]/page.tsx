@@ -191,10 +191,18 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               ) : (
                 <div className="mt-4 space-y-2">
                   {providers.map((provider) => (
-                    <form key={provider} action={enrolAction}>
+                    <form key={provider} action={enrolAction} className="space-y-2">
                       <input type="hidden" name="courseId" value={course.id} />
                       <input type="hidden" name="slug" value={slug} />
                       <input type="hidden" name="provider" value={provider} />
+                      {/* The code travels with the checkout request and is
+                          priced server-side; nothing here computes a total. */}
+                      <input
+                        name="couponCode"
+                        placeholder="Discount code (optional)"
+                        aria-label="Discount code"
+                        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm uppercase outline-none transition focus:border-brand"
+                      />
                       <button
                         type="submit"
                         className="w-full rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110"

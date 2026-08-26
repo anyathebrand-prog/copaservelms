@@ -143,12 +143,12 @@ async function main() {
     "tx_ref read");
 
   // --- checkout guards ----------------------------------------------------
-  const freeViaCheckout = await startCheckout(buyer.id, free.id, "PAYSTACK", "http://localhost:3000", stubDriver);
+  const freeViaCheckout = await startCheckout(buyer.id, free.id, "PAYSTACK", "http://localhost:3000", { driverOverride: stubDriver });
   check("a free course cannot go through checkout",
     !freeViaCheckout.ok && freeViaCheckout.error === "FREE_COURSE",
     freeViaCheckout.ok ? "started!" : freeViaCheckout.error);
 
-  const draftCheckout = await startCheckout(buyer.id, draft.id, "PAYSTACK", "http://localhost:3000", stubDriver);
+  const draftCheckout = await startCheckout(buyer.id, draft.id, "PAYSTACK", "http://localhost:3000", { driverOverride: stubDriver });
   check("an unpublished course cannot be bought",
     !draftCheckout.ok && draftCheckout.error === "NOT_PUBLISHED",
     draftCheckout.ok ? "started!" : draftCheckout.error);
@@ -161,12 +161,13 @@ async function main() {
   check("a free course enrols directly", freeEnrol.ok, freeEnrol.ok ? "enrolled" : `${freeEnrol.error}`);
 
   // --- checkout -----------------------------------------------------------
-  const checkout = await startCheckout(buyer.id, paid.id, "PAYSTACK", "http://localhost:3000", stubDriver);
-  check("checkout starts and returns a URL", checkout.ok,
-    checkout.ok ? checkout.data.reference : `${checkout.error}`);
-  if (!checkout.ok) return finish();
+  const checkout = await startCheckout(buyer.id, paid.id, "PAYSTACK", "http://localhost:3000", { driverOverride: stubDriver });
+  const startedReference = checkout.ok && "reference" in checkout.data ? checkout.data.reference : null;
+  check("checkout starts and returns a URL", startedReference !== null,
+    startedReference ?? (checkout.ok ? "enrolled free" : checkout.error));
+  if (!startedReference) return finish();
 
-  const reference = checkout.data.reference;
+  const reference = startedReference;
 
   const pendingRow = await prisma.payment.findUniqueOrThrow({ where: { reference } });
   check("a pending payment row is written before redirect",
@@ -223,7 +224,7 @@ async function main() {
   check("a replay does not duplicate the payment", paymentsCount === 1, `${paymentsCount}`);
 
   // Concurrent webhooks: both must resolve without creating two enrolments.
-  const second = await startCheckout(buyer.id, free.id, "PAYSTACK", "http://localhost:3000", stubDriver);
+  const second = await startCheckout(buyer.id, free.id, "PAYSTACK", "http://localhost:3000", { driverOverride: stubDriver });
   check("checkout is refused when already enrolled",
     !second.ok && second.error === "ALREADY_ENROLLED", second.ok ? "started!" : second.error);
 

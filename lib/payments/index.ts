@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getPaymentDriver, type PaymentDriver, type VerifiedPayment } from "./provider";
+import { quoteCoupon, redeemCoupon, REJECTION_MESSAGES } from "@/lib/coupons";
 import type { PaymentProvider } from "@/app/generated/prisma/enums";
 
 /**
@@ -24,7 +25,8 @@ export type CheckoutError =
   | "FREE_COURSE"
   | "NOT_PUBLISHED"
   | "NO_PROVIDER"
-  | "PROVIDER_FAILED";
+  | "PROVIDER_FAILED"
+  | "COUPON_REJECTED";
 
 export type Result<T, E> = { ok: true; data: T } | { ok: false; error: E; detail?: string };
 
@@ -38,9 +40,18 @@ export async function startCheckout(
   courseId: string,
   provider: PaymentProvider,
   origin: string,
-  /** Injection seam for tests, so the real flow can run without live keys. */
-  driverOverride?: PaymentDriver,
-): Promise<Result<{ checkoutUrl: string; reference: string }, CheckoutError>> {
+  options: {
+    /** Discount code as typed by the buyer; priced server-side. */
+    couponCode?: string | null;
+    /** Injection seam for tests, so the real flow can run without live keys. */
+    driverOverride?: PaymentDriver;
+  } = {},
+): Promise<
+  Result<
+    { checkoutUrl: string; reference: string } | { enrolledFree: true; enrollmentId: string },
+    CheckoutError
+  >
+> {
   const [course, user, existing] = await Promise.all([
     prisma.course.findUnique({
       where: { id: courseId },
@@ -56,7 +67,54 @@ export async function startCheckout(
   // A free course needs no payment; enrolling directly is the correct path.
   if (course.priceMinor <= 0) return { ok: false, error: "FREE_COURSE" };
 
+  // Price the coupon here, from the stored code and the course's real price.
+  // Whatever discount the buyer was shown is re-derived, never accepted.
+  let discountMinor = 0;
+  let couponId: string | null = null;
+  let couponCode: string | null = null;
+
+  if (options.couponCode?.trim()) {
+    const quoted = await quoteCoupon(options.couponCode, userId, courseId);
+    if (!quoted.ok) {
+      return { ok: false, error: "COUPON_REJECTED", detail: REJECTION_MESSAGES[quoted.reason] };
+    }
+    discountMinor = quoted.quote.discountMinor;
+    couponId = quoted.quote.couponId;
+    couponCode = quoted.quote.code;
+  }
+
+  const payableMinor = course.priceMinor - discountMinor;
   const reference = newReference();
+
+  // A 100%-off code leaves nothing to charge. Sending a zero-value transaction
+  // to a provider would fail, so enrol directly and record the payment as
+  // settled for zero — the discount still has to be redeemed and audited.
+  if (payableMinor <= 0) {
+    const enrollment = await prisma.enrollment.upsert({
+      where: { userId_courseId: { userId, courseId } },
+      update: {},
+      create: { userId, courseId, status: "ACTIVE", startedAt: new Date() },
+      select: { id: true },
+    });
+
+    const payment = await prisma.payment.create({
+      data: {
+        userId, courseId, provider, reference,
+        status: "SUCCESSFUL",
+        amountMinor: 0,
+        currency: course.currency,
+        couponCode,
+        discountMinor,
+        enrollmentId: enrollment.id,
+        paidAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    if (couponId) await redeemCoupon(couponId, userId, discountMinor, payment.id);
+
+    return { ok: true, data: { enrolledFree: true, enrollmentId: enrollment.id } };
+  }
 
   // The row is written before the provider is called, so a checkout that is
   // started and abandoned still leaves a PENDING record to reconcile against.
@@ -67,17 +125,19 @@ export async function startCheckout(
       provider,
       reference,
       status: "PENDING",
-      // Authoritative amount: taken from the course, never from the request.
-      amountMinor: course.priceMinor,
+      // Authoritative amount: course price less the server-priced discount.
+      amountMinor: payableMinor,
       currency: course.currency,
+      couponCode,
+      discountMinor,
     },
   });
 
   try {
-    const driver = driverOverride ?? getPaymentDriver(provider);
+    const driver = options.driverOverride ?? getPaymentDriver(provider);
     const { checkoutUrl } = await driver.createCheckout({
       reference,
-      amountMinor: course.priceMinor,
+      amountMinor: payableMinor,
       currency: course.currency,
       email: user.email,
       callbackUrl: `${origin}/payments/callback?reference=${encodeURIComponent(reference)}`,
@@ -123,6 +183,7 @@ export async function finalisePayment(
     select: {
       id: true, userId: true, courseId: true, provider: true,
       amountMinor: true, currency: true, status: true, enrollmentId: true,
+      couponCode: true, discountMinor: true,
     },
   });
 
@@ -188,6 +249,31 @@ export async function finalisePayment(
         providerPayload: verified.raw as never,
       },
     });
+
+    if (payment.couponCode) {
+      // Redeemed on confirmation, not at checkout: an abandoned checkout must
+      // not burn a limited code.
+      const coupon = await tx.coupon.findUnique({
+        where: { code: payment.couponCode },
+        select: { id: true },
+      });
+      if (coupon) {
+        await tx.couponRedemption.upsert({
+          where: { couponId_paymentId: { couponId: coupon.id, paymentId: payment.id } },
+          update: {},
+          create: {
+            couponId: coupon.id,
+            userId: payment.userId,
+            paymentId: payment.id,
+            discountMinor: payment.discountMinor,
+          },
+        });
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { redemptionCount: { increment: 1 } },
+        });
+      }
+    }
 
     await tx.auditLog.create({
       data: {
