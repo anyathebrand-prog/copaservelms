@@ -372,10 +372,16 @@ export async function deleteModule(
   // constraint will collide the next time something is appended.
   await prisma.$transaction([
     prisma.module.delete({ where: { id: moduleId } }),
-    prisma.module.updateMany({
-      where: { courseId: courseModule.courseId, position: { gt: courseModule.position } },
-      data: { position: { decrement: 1 } },
-    }),
+    // Same two-phase compaction as lessons: (courseId, position) is unique,
+    // so a straight decrement can collide mid-statement.
+    prisma.$executeRaw`
+      UPDATE "modules" SET "position" = -"position"
+      WHERE "courseId" = ${courseModule.courseId}::uuid AND "position" > ${courseModule.position}
+    `,
+    prisma.$executeRaw`
+      UPDATE "modules" SET "position" = -"position" - 1
+      WHERE "courseId" = ${courseModule.courseId}::uuid AND "position" < 0
+    `,
   ]);
 
   return { ok: true, data: { courseId: courseModule.courseId } };
@@ -510,10 +516,20 @@ export async function deleteLesson(
 
   await prisma.$transaction([
     prisma.lesson.delete({ where: { id: lessonId } }),
-    prisma.lesson.updateMany({
-      where: { moduleId: lesson.moduleId, position: { gt: lesson.position } },
-      data: { position: { decrement: 1 } },
-    }),
+    // Two-phase compaction. A plain decrement violates the
+    // (moduleId, position) unique constraint whenever Postgres updates a
+    // higher row before the one below it has vacated its slot — which depends
+    // on physical row order, so it passes on one database and fails on
+    // another. Parking the survivors in the negative range first cannot
+    // collide, because no live row ever holds a negative position.
+    prisma.$executeRaw`
+      UPDATE "lessons" SET "position" = -"position"
+      WHERE "moduleId" = ${lesson.moduleId}::uuid AND "position" > ${lesson.position}
+    `,
+    prisma.$executeRaw`
+      UPDATE "lessons" SET "position" = -"position" - 1
+      WHERE "moduleId" = ${lesson.moduleId}::uuid AND "position" < 0
+    `,
   ]);
 
   return { ok: true, data: { courseId: lesson.module.courseId } };

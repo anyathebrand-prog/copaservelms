@@ -10,7 +10,7 @@ import type { PrismaClient } from "@/app/generated/prisma/client";
  */
 
 export const INSTITUTION_NAME =
-  process.env.NEXT_PUBLIC_INSTITUTION_NAME ?? "Business Intelligence Technologies Limited";
+  process.env.NEXT_PUBLIC_INSTITUTION_NAME || "Business Intelligence Technologies Limited";
 
 export type VerificationResult =
   | { found: false }

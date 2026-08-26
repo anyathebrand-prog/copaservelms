@@ -99,7 +99,12 @@ export default async function StudentDashboard() {
       </div>
 
       <section className="rounded-2xl border border-border bg-surface p-6">
-        <h2 className="font-display font-semibold">Achievements</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-semibold">Achievements</h2>
+          <Link href="/student/achievements" className="text-sm font-medium text-brand hover:underline">
+            View all
+          </Link>
+        </div>
         {summary.achievements.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">
             Badges you earn will appear here. Certificates earned: {summary.certificatesEarned}.

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
 import { sendNotification } from "@/lib/notifications";
+import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
 import { evaluateEligibility } from "./eligibility";
 import { renderCertificatePdf } from "./pdf";
 
@@ -14,10 +15,10 @@ import { renderCertificatePdf } from "./pdf";
  */
 
 export const INSTITUTION_NAME =
-  process.env.NEXT_PUBLIC_INSTITUTION_NAME ?? "Business Intelligence Technologies Limited";
+  process.env.NEXT_PUBLIC_INSTITUTION_NAME || "Business Intelligence Technologies Limited";
 
 const VERIFY_BASE =
-  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL ?? "https://verify.copaserve.ng";
+  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL || "https://verify.copaserve.ng";
 
 export type IssueError =
   | "NOT_FOUND"
@@ -159,6 +160,9 @@ export async function issueCertificate(
     channels: ["EMAIL"],
     metadata: { certificateNumber, credentialId },
   }).catch(() => {});
+
+  await recordActivity(enrollment.userId, XP.CERTIFICATE_EARNED).catch(() => {});
+  await evaluateBadges(enrollment.userId).catch(() => {});
 
   return { ok: true, certificateId: certificate.id, certificateNumber, credentialId };
 }

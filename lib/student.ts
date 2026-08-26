@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
 
 /**
  * Student portal data access (PRD §9).
@@ -317,6 +318,11 @@ export async function markLessonComplete(userId: string, lessonId: string) {
 
   if (!enrollment) return { ok: false as const, error: "NOT_ENROLLED" as const };
 
+  const existingProgress = await prisma.lessonProgress.findUnique({
+    where: { enrollmentId_lessonId: { enrollmentId: enrollment.id, lessonId } },
+    select: { completed: true },
+  });
+
   await prisma.lessonProgress.upsert({
     where: { enrollmentId_lessonId: { enrollmentId: enrollment.id, lessonId } },
     update: { completed: true, completedAt: new Date() },
@@ -331,6 +337,10 @@ export async function markLessonComplete(userId: string, lessonId: string) {
   const progressPercent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
   const finished = totalLessons > 0 && completedLessons >= totalLessons;
 
+  // XP is awarded for the lesson only the first time it is completed — the
+  // upsert above is idempotent, so this checks whether it was already done.
+  const alreadyCounted = existingProgress?.completed === true;
+
   await prisma.enrollment.update({
     where: { id: enrollment.id },
     data: {
@@ -342,7 +352,18 @@ export async function markLessonComplete(userId: string, lessonId: string) {
     },
   });
 
-  return { ok: true as const, progressPercent, finished };
+  if (!alreadyCounted) {
+    await recordActivity(userId, XP.LESSON_COMPLETED);
+  }
+  if (finished) {
+    await recordActivity(userId, XP.COURSE_COMPLETED);
+  }
+
+  // Evaluated centrally rather than at each call site, so a badge cannot be
+  // missed by whichever route completed the course.
+  const badges = await evaluateBadges(userId);
+
+  return { ok: true as const, progressPercent, finished, badges };
 }
 
 function formatName(

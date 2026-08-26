@@ -34,6 +34,26 @@ function check(name: string, pass: boolean, detail: string) {
 const INSTRUCTOR = ["INSTRUCTOR"];
 const ADMIN = ["ADMIN"];
 
+/**
+ * Remove this run's fixtures.
+ *
+ * Courses cascade to modules, lessons, and enrolments; users are deleted last
+ * because courses reference their instructor.
+ */
+async function cleanup() {
+  const users = await prisma.user.findMany({
+    where: { email: { contains: `-${RUN}@demo.local` } },
+    select: { id: true },
+  });
+  const ids = users.map((u) => u.id);
+
+  await prisma.auditLog.deleteMany({ where: { actorId: { in: ids } } });
+  await prisma.notification.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.achievement.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.course.deleteMany({ where: { instructorId: { in: ids } } });
+  await prisma.user.deleteMany({ where: { id: { in: ids } } });
+}
+
 async function main() {
   const owner = await prisma.user.create({
     data: {
@@ -129,6 +149,32 @@ async function main() {
   const appended = await addLesson(moduleWithLessons.id, owner.id, INSTRUCTOR, { title: "Lesson 4", type: "TEXT" });
   check("append after delete does not collide", appended.ok, appended.ok ? "appended" : `error=${appended.error}`);
 
+  // Deleting from the middle is the case that exposed an ordering-dependent
+  // unique-constraint collision: compaction shifts several rows down at once,
+  // and a plain decrement fails whenever the database updates a higher row
+  // before the one below it has vacated its position.
+  course = await getCourseForEditing(courseId, owner.id, INSTRUCTOR);
+  const compactModule = course!.modules.find((m) => m.lessons.length >= 3)!;
+  for (const title of ["Lesson 5", "Lesson 6"]) {
+    await addLesson(compactModule.id, owner.id, INSTRUCTOR, { title, type: "TEXT" });
+  }
+  course = await getCourseForEditing(courseId, owner.id, INSTRUCTOR);
+  const before = course!.modules.find((m) => m.id === compactModule.id)!;
+  const middle = before.lessons[1];
+
+  const middleDelete = await deleteLesson(middle.id, owner.id, INSTRUCTOR);
+  check("deleting from the middle of a module succeeds", middleDelete.ok,
+    middleDelete.ok ? "deleted" : `error=${middleDelete.error}`);
+
+  course = await getCourseForEditing(courseId, owner.id, INSTRUCTOR);
+  const after = course!.modules.find((m) => m.id === compactModule.id)!;
+  const positions = after.lessons.map((l) => l.position);
+  check("positions stay contiguous from 1 after a middle delete",
+    positions.join(",") === positions.map((_, i) => i + 1).join(","),
+    positions.join(","));
+  check("no lesson was lost in compaction", after.lessons.length === before.lessons.length - 1,
+    `${before.lessons.length} → ${after.lessons.length}`);
+
   // --- publish workflow ---------------------------------------------------
   const selfPublish = await setCourseStatus(courseId, owner.id, INSTRUCTOR, "PUBLISHED");
   check("instructor cannot self-publish", !selfPublish.ok && selfPublish.error === "FORBIDDEN",
@@ -180,8 +226,19 @@ async function finish() {
   console.log(results.join("\n"));
   const passed = results.filter((r) => r.startsWith("PASS")).length;
   console.log(`\n${passed}/${results.length} passed`);
-  await prisma.$disconnect();
-  process.exit(passed === results.length ? 0 : 1);
+  return passed === results.length;
 }
 
-main();
+main()
+  .then(async (ok) => {
+    await cleanup();
+    console.log("cleaned up fixtures");
+    await prisma.$disconnect();
+    process.exit(ok ? 0 : 1);
+  })
+  .catch(async (error) => {
+    console.error(error);
+    await cleanup().catch((e) => console.error("cleanup failed for run", RUN, ":", (e as Error).message));
+    await prisma.$disconnect();
+    process.exit(1);
+  });

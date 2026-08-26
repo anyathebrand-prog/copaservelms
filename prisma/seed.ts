@@ -57,12 +57,62 @@ const CATEGORIES = [
   { name: "Web3 & Emerging Technologies", slug: "web3-emerging-tech", description: "Blockchain, verifiable credentials, AI, and emerging tech." },
 ];
 
+/**
+ * Badges from PRD §14, each with a machine-readable rule.
+ *
+ * The rule is what makes a badge awardable: an empty criteria object means the
+ * evaluator can never grant it, so a badge without one is effectively
+ * decorative. `manual` is the explicit way to say "an instructor decides".
+ */
 const BADGES = [
-  { name: "Certified Data Protection Officer", slug: "certified-dpo", description: "Completed the full DPO certification track.", xpValue: 500 },
-  { name: "NDPA Compliance Specialist", slug: "ndpa-compliance-specialist", description: "Demonstrated applied mastery of the Nigeria Data Protection Act.", xpValue: 400 },
-  { name: "Privacy Champion", slug: "privacy-champion", description: "Completed three or more privacy-domain courses.", xpValue: 300 },
-  { name: "Cybersecurity Fundamentals", slug: "cybersecurity-fundamentals", description: "Completed the cybersecurity foundation course.", xpValue: 200 },
-  { name: "Governance Expert", slug: "governance-expert", description: "Completed the corporate and IT governance track.", xpValue: 400 },
+  {
+    name: "Certified Data Protection Officer", slug: "certified-dpo",
+    description: "Completed the full DPO certification track.",
+    xpValue: 500,
+    criteria: { type: "certificates_earned", count: 3 },
+  },
+  {
+    name: "NDPA Compliance Specialist", slug: "ndpa-compliance-specialist",
+    description: "Demonstrated applied mastery of the Nigeria Data Protection Act.",
+    xpValue: 400,
+    criteria: { type: "category_completed", categorySlug: "data-protection", count: 2 },
+  },
+  {
+    name: "Privacy Champion", slug: "privacy-champion",
+    description: "Completed three or more privacy-domain courses.",
+    xpValue: 300,
+    criteria: { type: "category_completed", categorySlug: "data-protection", count: 3 },
+  },
+  {
+    name: "Cybersecurity Fundamentals", slug: "cybersecurity-fundamentals",
+    description: "Completed the cybersecurity foundation course.",
+    xpValue: 200,
+    criteria: { type: "category_completed", categorySlug: "cybersecurity", count: 1 },
+  },
+  {
+    name: "Governance Expert", slug: "governance-expert",
+    description: "Completed the corporate and IT governance track.",
+    xpValue: 400,
+    criteria: { type: "category_completed", categorySlug: "corporate-governance", count: 2 },
+  },
+  {
+    name: "First Steps", slug: "first-steps",
+    description: "Completed your first course.",
+    xpValue: 50,
+    criteria: { type: "courses_completed", count: 1 },
+  },
+  {
+    name: "High Distinction", slug: "high-distinction",
+    description: "Averaged 90% or better across five quizzes.",
+    xpValue: 250,
+    criteria: { type: "quiz_average", minimum: 90, attempts: 5 },
+  },
+  {
+    name: "Consistent Learner", slug: "consistent-learner",
+    description: "Learned on seven consecutive days.",
+    xpValue: 150,
+    criteria: { type: "streak", days: 7 },
+  },
 ];
 
 async function main() {
@@ -126,8 +176,15 @@ async function main() {
     BADGES.map((badge) =>
       prisma.badge.upsert({
         where: { slug: badge.slug },
-        update: { name: badge.name, description: badge.description, xpValue: badge.xpValue },
-        create: { ...badge, criteria: {}, isMintable: false },
+        // Criteria are authoritative here, so a re-run repairs a badge whose
+        // rule was changed or was seeded before rules existed.
+        update: {
+          name: badge.name,
+          description: badge.description,
+          xpValue: badge.xpValue,
+          criteria: badge.criteria,
+        },
+        create: { ...badge, isMintable: false },
       }),
     ),
   );

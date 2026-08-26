@@ -13,6 +13,7 @@ const NAV = [
   { href: "/student", label: "Dashboard" },
   { href: "/student/courses", label: "My Courses" },
   { href: "/student/certificates", label: "Certificates" },
+  { href: "/student/achievements", label: "Achievements" },
   { href: "/student/assignments", label: "Assignments" },
   { href: "/student/quizzes", label: "Quizzes" },
   { href: "/student/live-classes", label: "Live Classes" },
