@@ -17,7 +17,8 @@
     "verify:portal": "tsx scripts/verify-student-portal.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "verify:instructor": "tsx scripts/verify-instructor.ts",
-    "verify:admin": "tsx scripts/verify-admin.ts"
+    "verify:admin": "tsx scripts/verify-admin.ts",
+    "verify:privacy": "tsx scripts/verify-privacy.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

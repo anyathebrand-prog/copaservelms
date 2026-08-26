@@ -17,6 +17,7 @@ const NAV = [
   { href: "/student/assignments", label: "Assignments" },
   { href: "/student/quizzes", label: "Quizzes" },
   { href: "/student/profile", label: "Profile" },
+  { href: "/student/privacy", label: "Privacy" },
 ];
 
 export function Sidebar() {

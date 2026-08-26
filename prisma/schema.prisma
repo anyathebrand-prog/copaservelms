@@ -152,6 +152,23 @@ enum ConsentAction {
   UPDATED
 }
 
+/// The data subject rights the NDPA grants (PRD §12.1).
+enum DataRequestType {
+  ACCESS
+  CORRECTION
+  ERASURE
+  PORTABILITY
+  OBJECTION
+  WITHDRAW_CONSENT
+}
+
+enum DataRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
 enum LiveClassProvider {
   ZOOM
   GOOGLE_MEET
@@ -207,6 +224,8 @@ model User {
   notifications       Notification[]
   consentLogs         ConsentLog[]
   auditLogs           AuditLog[]
+  dataRequests        DataSubjectRequest[]  @relation("DataSubject")
+  handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
   discussionPosts     DiscussionPost[]
@@ -969,6 +988,33 @@ model ConsentLog {
 
   @@index([userId, type])
   @@map("consent_logs")
+}
+
+/// A data subject rights request (PRD §12.1, §12.2).
+///
+/// Erasure and correction cannot be self-service: both need a human to weigh
+/// the request against retention obligations, which is why they are recorded
+/// here for an admin to action rather than executed on submission.
+model DataSubjectRequest {
+  id           String            @id @default(uuid()) @db.Uuid
+  userId       String            @db.Uuid
+  type         DataRequestType
+  status       DataRequestStatus @default(PENDING)
+  /// What the subject asked for, in their own words.
+  details      String?
+  /// What was done, and why — the record of how the request was discharged.
+  resolution   String?
+  handledById  String?           @db.Uuid
+  handledAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  user      User  @relation("DataSubject", fields: [userId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("DataRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("data_subject_requests")
 }
 
 model AuditLog {
