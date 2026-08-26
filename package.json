@@ -26,7 +26,8 @@
     "verify:coupons": "tsx scripts/verify-coupons.ts",
     "verify:organizations": "tsx scripts/verify-organizations.ts",
     "verify:notifications": "tsx scripts/verify-notifications.ts",
-    "verify:reports": "tsx scripts/verify-reports.ts"
+    "verify:reports": "tsx scripts/verify-reports.ts",
+    "verify:live-classes": "tsx scripts/verify-live-classes.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
