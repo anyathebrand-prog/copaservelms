@@ -19,7 +19,8 @@
     "verify:instructor": "tsx scripts/verify-instructor.ts",
     "verify:admin": "tsx scripts/verify-admin.ts",
     "verify:privacy": "tsx scripts/verify-privacy.ts",
-    "verify:certificates": "tsx scripts/verify-certificates.ts"
+    "verify:certificates": "tsx scripts/verify-certificates.ts",
+    "verify:e2e": "tsx scripts/verify-end-to-end.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

@@ -18,7 +18,7 @@ import { evaluateEligibility, findIssuableEnrollments } from "../lib/certificate
 import { issueCertificate, revokeCertificate } from "../lib/certificates/issue";
 import { renderCertificatePdf } from "../lib/certificates/pdf";
 import { verifyCredential } from "../lib/certificates";
-import { isStorageConfigured } from "../lib/storage";
+import { getStorage, isStorageConfigured } from "../lib/storage";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
@@ -35,8 +35,17 @@ async function cleanup() {
   await prisma.auditLog.deleteMany({ where: { actorId: { in: createdUsers } } });
   const certs = await prisma.certificate.findMany({
     where: { userId: { in: createdUsers } },
-    select: { id: true },
+    select: { id: true, userId: true, certificateNumber: true },
   });
+
+  // Delete the stored PDFs too — removing only the rows leaves orphaned
+  // objects in the bucket that nothing references any more.
+  if (isStorageConfigured()) {
+    const storage = getStorage();
+    for (const cert of certs) {
+      await storage.remove(`${cert.userId}/${cert.certificateNumber}.pdf`).catch(() => {});
+    }
+  }
   await prisma.auditLog.deleteMany({ where: { entityId: { in: certs.map((c) => c.id) } } });
   await prisma.certificate.deleteMany({ where: { userId: { in: createdUsers } } });
   await prisma.consentLog.deleteMany({ where: { userId: { in: createdUsers } } });
