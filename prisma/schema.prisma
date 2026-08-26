@@ -232,6 +232,7 @@ model User {
   dataRequests        DataSubjectRequest[]  @relation("DataSubject")
   couponsCreated      Coupon[]              @relation("CouponCreator")
   couponRedemptions   CouponRedemption[]
+  discussionLikes     DiscussionLike[]
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -978,9 +979,10 @@ model DiscussionPost {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author   User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments Comment[]
+  likes    DiscussionLike[]
 
   @@index([courseId])
   @@index([authorId])
@@ -1003,12 +1005,38 @@ model Comment {
   author  User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
   post    DiscussionPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
   lesson  Lesson?         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  parent  Comment?        @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
-  replies Comment[]       @relation("CommentThread")
+  parent  Comment?         @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]        @relation("CommentThread")
+  likes   DiscussionLike[]
 
   @@index([postId])
   @@index([lessonId])
   @@map("comments")
+}
+
+/// A like on a post or a comment (PRD §14).
+///
+/// likeCount alone cannot answer "did I already like this", so it can only ever
+/// go up and one person can inflate it without limit. This table is the record;
+/// the counter on the parent is a denormalised read.
+model DiscussionLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  postId    String?  @db.Uuid
+  commentId String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    DiscussionPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment?        @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  /// One like per person per target. Postgres treats NULLs as distinct, so a
+  /// user may hold many comment likes (postId null) and many post likes.
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@index([postId])
+  @@index([commentId])
+  @@map("discussion_likes")
 }
 
 model Notification {
