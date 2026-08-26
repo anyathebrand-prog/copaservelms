@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendNotification } from "@/lib/notifications";
 
 /**
  * Corporate accounts and bulk enrolment (PRD §13.2, §13.3).
@@ -8,8 +9,8 @@ import { prisma } from "@/lib/prisma";
  * is created with no auth link, and the auth trigger claims it when that person
  * eventually signs up — keeping the enrolments already attached to them.
  *
- * Nothing here sends email. Invitations arrive with the notification layer in
- * a later slice; until then an admin shares the sign-up link out of band.
+ * Members are notified when they are enrolled, so an imported person learns
+ * they have been given a course rather than waiting to be told out of band.
  */
 
 export type BulkResult = {
@@ -236,6 +237,18 @@ export async function bulkEnrol(
         enrolledBy: actorId,
       },
     });
+
+    // Transactional: being given a course is part of the service, not
+    // promotion, so it reaches people who declined marketing.
+    await sendNotification({
+      userId: member.id,
+      kind: "enrolment.granted",
+      title: `You have been enrolled in ${course.title}`,
+      body: `${organization.name} has enrolled you in ${course.title}. Sign in to begin.`,
+      actionUrl: "/student/courses",
+      channels: ["EMAIL"],
+    }).catch(() => {});
+
     result.enrolled.push(member.email);
   }
 

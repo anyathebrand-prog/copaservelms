@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendNotification } from "@/lib/notifications";
 import type { CourseStatus, RoleName, UserStatus } from "@/app/generated/prisma/enums";
 
 /**
@@ -166,7 +167,7 @@ export async function reviewCourse(
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, status: true, title: true },
+    select: { id: true, status: true, title: true, instructorId: true },
   });
   if (!course) return { ok: false, error: "NOT_FOUND" };
 
@@ -203,6 +204,24 @@ export async function reviewCourse(
       after: { status: nextStatus, title: course.title, reason: reason?.trim() ?? null },
     }),
   ]);
+
+  // A rejection is useless to an instructor who never hears about it.
+  if (decision === "REJECT" || decision === "PUBLISH") {
+    await sendNotification({
+      userId: course.instructorId,
+      kind: decision === "REJECT" ? "course.rejected" : "course.approved",
+      title:
+        decision === "REJECT"
+          ? `${course.title} needs changes`
+          : `${course.title} is now live`,
+      body:
+        decision === "REJECT"
+          ? `Your course was returned to draft. ${reason?.trim() ?? ""}`.trim()
+          : "Your course has been published and is now visible in the catalogue.",
+      actionUrl: `/instructor/courses/${courseId}`,
+      channels: ["EMAIL"],
+    }).catch(() => {});
+  }
 
   return { ok: true, data: updated };
 }
