@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
 import { getStudentAssignments } from "@/lib/student";
@@ -71,11 +72,12 @@ export default async function AssignmentsPage() {
                   </p>
                 )}
 
-                {/* Submission upload is intentionally absent: it needs the
-                    storage abstraction (§6.2) before files can be accepted. */}
-                <p className="mt-3 text-xs text-muted-foreground">
-                  File submission opens once course storage is configured.
-                </p>
+                <Link
+                  href={`/student/assignments/${assignment.id}`}
+                  className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                >
+                  {submission ? "View submission" : "Start submission"}
+                </Link>
               </li>
             );
           })}

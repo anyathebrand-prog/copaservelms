@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 /** Instructor navigation (PRD §10.2), limited to what Phase 1 ships. */
 const NAV = [
   { href: "/instructor", label: "Courses" },
+  { href: "/instructor/grading", label: "Grading" },
   { href: "/student", label: "Student view" },
 ];
 
