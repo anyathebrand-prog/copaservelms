@@ -1,0 +1,51 @@
+{
+  "name": "copaserve",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
+    "db:seed": "prisma db seed",
+    "verify:data-layer": "tsx scripts/verify-data-layer.ts",
+    "verify:portal": "tsx scripts/verify-student-portal.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "verify:instructor": "tsx scripts/verify-instructor.ts",
+    "verify:admin": "tsx scripts/verify-admin.ts",
+    "verify:privacy": "tsx scripts/verify-privacy.ts",
+    "verify:certificates": "tsx scripts/verify-certificates.ts",
+    "verify:e2e": "tsx scripts/verify-end-to-end.ts",
+    "verify:assignments": "tsx scripts/verify-assignments.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
+    "next": "16.3.3",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "prisma": "^7.10.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}

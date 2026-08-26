@@ -1,0 +1,1039 @@
+// CopaServe LMS — Prisma schema
+// Derived from CopaServe-LMS-PRD.md §15 (Data Model) and the entity list in README.md.
+//
+// Conventions:
+//  - Auth is delegated to Supabase Auth; `User.supabaseUserId` links a row to `auth.users`.
+//  - Every user-owned / role-scoped table below requires an RLS policy before UI ships
+//    against it (PRD §6.2 — hard gate).
+//  - AuditLog and ConsentLog are append-only: no update/delete paths, redaction only.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum CourseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum LessonType {
+  VIDEO
+  PDF
+  AUDIO
+  TEXT
+  EXTERNAL_LINK
+  EMBEDDED_SLIDES
+  CODE_SNIPPET
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  CHECKBOX
+  SHORT_ANSWER
+  ESSAY
+  TRUE_FALSE
+  DRAG_AND_DROP
+  MATCHING
+}
+
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_GRADED
+  PENDING_MANUAL_GRADING
+  GRADED
+  ABANDONED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  RESUBMITTED
+  UNDER_REVIEW
+  GRADED
+  RETURNED
+}
+
+enum CertificateStatus {
+  PENDING_APPROVAL
+  ISSUED
+  EXPIRED
+  REVOKED
+}
+
+enum MintStatus {
+  NOT_MINTED
+  MINT_ELIGIBLE
+  MINT_PENDING
+  MINTED
+  REVOKED
+}
+
+enum WalletProvider {
+  WALLETCONNECT
+  METAMASK
+  COINBASE
+  RAINBOW
+  AVALANCHE_CORE
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  FLUTTERWAVE
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum ConsentType {
+  PRIVACY_NOTICE
+  TERMS_OF_SERVICE
+  COOKIES
+  MARKETING_EMAIL
+  MARKETING_SMS
+  DATA_PROCESSING
+}
+
+enum ConsentAction {
+  GRANTED
+  WITHDRAWN
+  UPDATED
+}
+
+/// The data subject rights the NDPA grants (PRD §12.1).
+enum DataRequestType {
+  ACCESS
+  CORRECTION
+  ERASURE
+  PORTABILITY
+  OBJECTION
+  WITHDRAW_CONSENT
+}
+
+enum DataRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum LiveClassProvider {
+  ZOOM
+  GOOGLE_MEET
+  OTHER
+}
+
+enum LiveClassStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum ResourceScope {
+  COURSE
+  MODULE
+  LESSON
+  LIVE_CLASS
+}
+
+// ---------------------------------------------------------------------------
+// Identity, roles & profiles
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String     @id @default(uuid()) @db.Uuid
+  /// FK into Supabase `auth.users`. Null only for imported/pre-provisioned users.
+  supabaseUserId   String?    @unique @db.Uuid
+  email            String     @unique
+  emailVerified    Boolean    @default(false)
+  phone            String?
+  status           UserStatus @default(PENDING)
+  twoFactorEnabled Boolean    @default(false)
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  /// NDPA erasure: set when a deletion request is fulfilled; row is redacted, not dropped.
+  deletedAt        DateTime?
+
+  profile             Profile?
+  roles               UserRole[]
+  organizationId      String?               @db.Uuid
+  organization        Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  coursesTaught       Course[]              @relation("CourseInstructor")
+  enrollments         Enrollment[]
+  quizAttempts        QuizAttempt[]
+  submissions         Submission[]
+  gradedSubmissions   Submission[]          @relation("SubmissionGrader")
+  certificates        Certificate[]
+  revokedCertificates Certificate[]         @relation("CertificateRevoker")
+  wallets             Wallet[]
+  payments            Payment[]
+  notifications       Notification[]
+  consentLogs         ConsentLog[]
+  auditLogs           AuditLog[]
+  dataRequests        DataSubjectRequest[]  @relation("DataSubject")
+  handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
+  attendances         LiveClassAttendance[]
+  achievements        Achievement[]
+  discussionPosts     DiscussionPost[]
+  comments            Comment[]
+  lessonProgress      LessonProgress[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        RoleName @unique
+  description String?
+  /// Fine-grained permission slugs, e.g. ["course.approve", "user.suspend"].
+  permissions String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+  assignedBy String?  @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Profile {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  firstName        String
+  lastName         String
+  /// Rendered onto certificates; may differ from firstName + lastName.
+  displayName      String?
+  avatarUrl        String?
+  bio              String?
+  profession       String?
+  organizationName String?
+  country          String?
+  phone            String?
+  emergencyContact String?
+  /// Gamification (PRD §14): XP, streaks, cumulative learning time.
+  xpPoints         Int      @default(0)
+  currentStreak    Int      @default(0)
+  longestStreak    Int      @default(0)
+  learningMinutes  Int      @default(0)
+  /// Per-channel communication preferences, keyed by NotificationChannel.
+  communicationPrefs Json   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+/// Corporate / institutional buyer (PRD §13.3 multi-tenant groundwork).
+model Organization {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String   @unique
+  logoUrl      String?
+  contactEmail String?
+  /// Branding overrides for Super Admin white-labelling.
+  branding     Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members User[]
+
+  @@map("organizations")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue: courses, modules, lessons, resources
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courses Course[]
+
+  @@map("categories")
+}
+
+model Course {
+  id               String       @id @default(uuid()) @db.Uuid
+  title            String
+  slug             String       @unique
+  subtitle         String?
+  description      String?
+  thumbnailUrl     String?
+  promoVideoUrl    String?
+  level            CourseLevel  @default(BEGINNER)
+  status           CourseStatus @default(DRAFT)
+  /// Price in kobo (NGN minor units); 0 = free.
+  priceMinor       Int          @default(0)
+  currency         String       @default("NGN")
+  estimatedMinutes Int?
+  isFeatured       Boolean      @default(false)
+
+  // Certificate eligibility configuration (PRD §11.1)
+  certificateEnabled     Boolean @default(true)
+  minQuizScore           Int?
+  requiresAssignments    Boolean @default(false)
+  minAttendanceRate      Int?
+  requiresAdminApproval  Boolean @default(false)
+  certificateValidMonths Int?
+
+  instructorId String    @db.Uuid
+  categoryId   String?   @db.Uuid
+  templateId   String?   @db.Uuid
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  instructor  User                 @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  category    Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  template    CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  modules     Module[]
+  enrollments Enrollment[]
+  quizzes     Quiz[]
+  assignments Assignment[]
+  liveClasses LiveClass[]
+  resources   Resource[]
+  payments    Payment[]
+  discussions DiscussionPost[]
+  badges      Badge[]
+
+  @@index([instructorId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("courses")
+}
+
+model Module {
+  id          String   @id @default(uuid()) @db.Uuid
+  courseId    String   @db.Uuid
+  title       String
+  description String?
+  position    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+  resources Resource[]
+
+  @@unique([courseId, position])
+  @@map("modules")
+}
+
+model Lesson {
+  id              String     @id @default(uuid()) @db.Uuid
+  moduleId        String     @db.Uuid
+  title           String
+  type            LessonType @default(VIDEO)
+  /// Video/audio/PDF URL or embed source, resolved through the storage abstraction.
+  contentUrl      String?
+  /// Rich text body, code snippet, or embed payload depending on `type`.
+  content         String?
+  position        Int
+  durationSeconds Int?
+  isPreview       Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  prerequisites LessonPrereq[] @relation("LessonDependent")
+  requiredBy    LessonPrereq[] @relation("LessonPrerequisite")
+  progress      LessonProgress[]
+  quizzes       Quiz[]
+  resources     Resource[]
+  comments      Comment[]
+
+  @@unique([moduleId, position])
+  @@map("lessons")
+}
+
+/// Lesson prerequisite graph (PRD §10.3).
+model LessonPrereq {
+  lessonId       String @db.Uuid
+  prerequisiteId String @db.Uuid
+
+  lesson       Lesson @relation("LessonDependent", fields: [lessonId], references: [id], onDelete: Cascade)
+  prerequisite Lesson @relation("LessonPrerequisite", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, prerequisiteId])
+  @@map("lesson_prerequisites")
+}
+
+model Resource {
+  id          String        @id @default(uuid()) @db.Uuid
+  scope       ResourceScope
+  title       String
+  fileUrl     String
+  mimeType    String?
+  sizeBytes   Int?
+  isPinned    Boolean       @default(false)
+  courseId    String?       @db.Uuid
+  moduleId    String?       @db.Uuid
+  lessonId    String?       @db.Uuid
+  liveClassId String?       @db.Uuid
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  course    Course?    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module    Module?    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson    Lesson?    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  liveClass LiveClass? @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([lessonId])
+  @@map("resources")
+}
+
+// ---------------------------------------------------------------------------
+// Enrollment & progress
+// ---------------------------------------------------------------------------
+
+/// Joins User <-> Course; the anchor for progress and certificate eligibility (PRD §15).
+model Enrollment {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  courseId        String           @db.Uuid
+  status          EnrollmentStatus @default(ACTIVE)
+  progressPercent Int              @default(0)
+  enrolledAt      DateTime         @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  /// Set for corporate/bulk enrollment and scholarships.
+  enrolledBy      String?          @db.Uuid
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+  quizAttempts   QuizAttempt[]
+  submissions    Submission[]
+  certificate    Certificate?
+  payment        Payment?
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([status])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id                  String    @id @default(uuid()) @db.Uuid
+  enrollmentId        String    @db.Uuid
+  lessonId            String    @db.Uuid
+  userId              String    @db.Uuid
+  completed           Boolean   @default(false)
+  completedAt         DateTime?
+  /// Resume position for the course player.
+  lastPositionSeconds Int       @default(0)
+  watchedSeconds      Int       @default(0)
+  notes               String?
+  bookmarks           Json      @default("[]")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([userId])
+  @@map("lesson_progress")
+}
+
+// ---------------------------------------------------------------------------
+// Assessment: quizzes, questions, attempts, assignments, submissions
+// ---------------------------------------------------------------------------
+
+model Quiz {
+  id               String   @id @default(uuid()) @db.Uuid
+  courseId         String   @db.Uuid
+  lessonId         String?  @db.Uuid
+  title            String
+  description      String?
+  timeLimitMinutes Int?
+  passingScore     Int      @default(70)
+  maxAttempts      Int?
+  shuffleQuestions Boolean  @default(false)
+  showAnswersAfter Boolean  @default(true)
+  /// Counts toward the course's certificate eligibility check (PRD §11.1).
+  countsTowardCertificate Boolean @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson    Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  @@index([courseId])
+  @@map("quizzes")
+}
+
+model Question {
+  id            String       @id @default(uuid()) @db.Uuid
+  quizId        String       @db.Uuid
+  type          QuestionType
+  prompt        String
+  /// Choices / pairs / drag items; shape depends on `type`.
+  options       Json         @default("[]")
+  /// Null for ESSAY and SHORT_ANSWER questions that require manual grading.
+  correctAnswer Json?
+  explanation   String?
+  points        Int          @default(1)
+  position      Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+
+  @@unique([quizId, position])
+  @@map("questions")
+}
+
+model QuizAttempt {
+  id            String            @id @default(uuid()) @db.Uuid
+  quizId        String            @db.Uuid
+  userId        String            @db.Uuid
+  enrollmentId  String            @db.Uuid
+  attemptNumber Int
+  status        QuizAttemptStatus @default(IN_PROGRESS)
+  score         Int?
+  maxScore      Int?
+  passed        Boolean?
+  startedAt     DateTime          @default(now())
+  submittedAt   DateTime?
+  gradedAt      DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  answers    QuizAnswer[]
+
+  @@unique([quizId, userId, attemptNumber])
+  @@index([enrollmentId])
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id            String   @id @default(uuid()) @db.Uuid
+  attemptId     String   @db.Uuid
+  questionId    String   @db.Uuid
+  response      Json
+  isCorrect     Boolean?
+  pointsAwarded Int?
+  feedback      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("quiz_answers")
+}
+
+model Assignment {
+  id               String    @id @default(uuid()) @db.Uuid
+  courseId         String    @db.Uuid
+  title            String
+  instructions     String?
+  dueAt            DateTime?
+  maxPoints        Int       @default(100)
+  /// Accepted upload types, e.g. ["pdf", "docx", "zip", "png", "mp4"].
+  allowedFileTypes String[]  @default([])
+  maxFileSizeMb    Int?
+  allowResubmission Boolean  @default(true)
+  /// Rubric criteria for scored feedback (PRD §9.6).
+  rubric           Json      @default("[]")
+  isRequiredForCertificate Boolean @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([courseId])
+  @@map("assignments")
+}
+
+model Submission {
+  id            String           @id @default(uuid()) @db.Uuid
+  assignmentId  String           @db.Uuid
+  userId        String           @db.Uuid
+  enrollmentId  String           @db.Uuid
+  status        SubmissionStatus @default(DRAFT)
+  /// Uploaded file descriptors: [{ url, name, mimeType, sizeBytes }].
+  files         Json             @default("[]")
+  notes         String?
+  attemptNumber Int              @default(1)
+  submittedAt   DateTime?
+  grade         Int?
+  rubricScores  Json?
+  feedback      String?
+  gradedById    String?          @db.Uuid
+  gradedAt      DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  gradedBy   User?      @relation("SubmissionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([assignmentId, userId, attemptNumber])
+  @@index([enrollmentId])
+  @@index([status])
+  @@map("submissions")
+}
+
+// ---------------------------------------------------------------------------
+// Certificates & Web3 layer
+// ---------------------------------------------------------------------------
+
+model CertificateTemplate {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @unique
+  /// Layout definition consumed by the PDF renderer.
+  layout        Json     @default("{}")
+  logoUrl       String?
+  signatureUrl  String?
+  backgroundUrl String?
+  /// Palette overrides — see PRD §6.3 design note (purple/gold vs. brand green).
+  theme         Json     @default("{}")
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  certificates Certificate[]
+  courses      Course[]
+
+  @@map("certificate_templates")
+}
+
+model Certificate {
+  id                String            @id @default(uuid()) @db.Uuid
+  /// Public credential number, pattern CERT-YYYY-NNNNNN (PRD §11.3).
+  certificateNumber String            @unique
+  /// Opaque public verification slug used by verify.bitlearn.ng.
+  credentialId      String            @unique
+  userId            String            @db.Uuid
+  enrollmentId      String            @unique @db.Uuid
+  templateId        String?           @db.Uuid
+  status            CertificateStatus @default(PENDING_APPROVAL)
+  pdfUrl            String?
+  qrCodeUrl         String?
+  verificationUrl   String?
+  issuedAt          DateTime?
+  expiresAt         DateTime?
+  emailedAt         DateTime?
+  mintStatus        MintStatus        @default(NOT_MINTED)
+  revokedAt         DateTime?
+  revokedById       String?           @db.Uuid
+  revocationReason  String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  template   CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  revokedBy  User?                @relation("CertificateRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+  /// 1:0..1 — a certificate has at most one mint transaction (PRD §15).
+  mintTransaction MintTransaction?
+
+  @@index([userId])
+  @@index([status])
+  @@map("certificates")
+}
+
+model Wallet {
+  id             String         @id @default(uuid()) @db.Uuid
+  userId         String         @db.Uuid
+  address        String
+  provider       WalletProvider
+  /// EVM chain id — Avalanche C-Chain first, Polygon-compatible (PRD §11.5).
+  chainId        Int
+  isPrimary      Boolean        @default(false)
+  connectedAt    DateTime       @default(now())
+  disconnectedAt DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mintTransactions MintTransaction[]
+
+  @@unique([userId, address, chainId])
+  @@index([address])
+  @@map("wallets")
+}
+
+model MintTransaction {
+  id              String     @id @default(uuid()) @db.Uuid
+  certificateId   String     @unique @db.Uuid
+  walletId        String     @db.Uuid
+  status          MintStatus @default(MINT_PENDING)
+  chainId         Int
+  contractAddress String?
+  tokenId         String?
+  transactionHash String?    @unique
+  /// On-chain-safe metadata only — no sensitive student data (PRD §11.5).
+  metadataUri     String?
+  metadata        Json       @default("{}")
+  explorerUrl     String?
+  errorMessage    String?
+  mintedAt        DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  wallet      Wallet      @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@index([walletId])
+  @@map("mint_transactions")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @db.Uuid
+  courseId      String?         @db.Uuid
+  enrollmentId  String?         @unique @db.Uuid
+  provider      PaymentProvider
+  /// Provider-side transaction reference.
+  reference     String          @unique
+  status        PaymentStatus   @default(PENDING)
+  /// Amount in kobo (NGN minor units).
+  amountMinor   Int
+  currency      String          @default("NGN")
+  couponCode    String?
+  discountMinor Int             @default(0)
+  refundedMinor Int             @default(0)
+  invoiceUrl    String?
+  /// Raw provider webhook payload, retained for reconciliation.
+  providerPayload Json          @default("{}")
+  paidAt        DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Live classes
+// ---------------------------------------------------------------------------
+
+model LiveClass {
+  id           String            @id @default(uuid()) @db.Uuid
+  courseId     String            @db.Uuid
+  title        String
+  description  String?
+  provider     LiveClassProvider @default(ZOOM)
+  status       LiveClassStatus   @default(SCHEDULED)
+  joinUrl      String?
+  /// Provider meeting id — Zoom/Meet integrations are placeholders at launch (PRD §9.7).
+  externalId   String?
+  startsAt     DateTime
+  endsAt       DateTime?
+  recordingUrl String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  course      Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendances LiveClassAttendance[]
+  resources   Resource[]
+
+  @@index([courseId])
+  @@index([startsAt])
+  @@map("live_classes")
+}
+
+model LiveClassAttendance {
+  id              String    @id @default(uuid()) @db.Uuid
+  liveClassId     String    @db.Uuid
+  userId          String    @db.Uuid
+  joinedAt        DateTime?
+  leftAt          DateTime?
+  minutesAttended Int       @default(0)
+  attended        Boolean   @default(false)
+  certificateUrl  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, userId])
+  @@map("live_class_attendances")
+}
+
+// ---------------------------------------------------------------------------
+// Engagement: badges, achievements, discussions, notifications
+// ---------------------------------------------------------------------------
+
+model Badge {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  /// Machine-readable award rule, e.g. { type: "course_completed", courseId }.
+  criteria    Json     @default("{}")
+  xpValue     Int      @default(0)
+  isMintable  Boolean  @default(false)
+  courseId    String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  achievements Achievement[]
+
+  @@map("badges")
+}
+
+/// A badge actually earned by a user (PRD §14 gamification).
+model Achievement {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  badgeId   String   @db.Uuid
+  earnedAt  DateTime @default(now())
+  xpAwarded Int      @default(0)
+  /// Snapshot of what triggered the award, for auditability.
+  context   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("achievements")
+}
+
+model DiscussionPost {
+  id             String    @id @default(uuid()) @db.Uuid
+  courseId       String    @db.Uuid
+  authorId       String    @db.Uuid
+  title          String?
+  body           String
+  isPinned       Boolean   @default(false)
+  isAnnouncement Boolean   @default(false)
+  isLocked       Boolean   @default(false)
+  likeCount      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+
+  @@index([courseId])
+  @@index([authorId])
+  @@map("discussion_posts")
+}
+
+model Comment {
+  id        String    @id @default(uuid()) @db.Uuid
+  authorId  String    @db.Uuid
+  body      String
+  /// A comment hangs off either a discussion post or a lesson (course player).
+  postId    String?   @db.Uuid
+  lessonId  String?   @db.Uuid
+  parentId  String?   @db.Uuid
+  likeCount Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  author  User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post    DiscussionPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  lesson  Lesson?         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  parent  Comment?        @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]       @relation("CommentThread")
+
+  @@index([postId])
+  @@index([lessonId])
+  @@map("comments")
+}
+
+model Notification {
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @db.Uuid
+  channel      NotificationChannel @default(IN_APP)
+  title        String
+  body         String
+  /// Deep link into the app, e.g. /student/certificates/CERT-2026-000123.
+  actionUrl    String?
+  metadata     Json                @default("{}")
+  readAt       DateTime?
+  sentAt       DateTime?
+  scheduledFor DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Compliance: consent & audit (append-only — PRD §15)
+// ---------------------------------------------------------------------------
+
+model ConsentLog {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @db.Uuid
+  type          ConsentType
+  action        ConsentAction
+  /// Version of the notice/policy the user acted on.
+  policyVersion String?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json          @default("{}")
+  createdAt     DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, type])
+  @@map("consent_logs")
+}
+
+/// A data subject rights request (PRD §12.1, §12.2).
+///
+/// Erasure and correction cannot be self-service: both need a human to weigh
+/// the request against retention obligations, which is why they are recorded
+/// here for an admin to action rather than executed on submission.
+model DataSubjectRequest {
+  id           String            @id @default(uuid()) @db.Uuid
+  userId       String            @db.Uuid
+  type         DataRequestType
+  status       DataRequestStatus @default(PENDING)
+  /// What the subject asked for, in their own words.
+  details      String?
+  /// What was done, and why — the record of how the request was discharged.
+  resolution   String?
+  handledById  String?           @db.Uuid
+  handledAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  user      User  @relation("DataSubject", fields: [userId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("DataRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("data_subject_requests")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  /// Null for system-initiated actions (jobs, webhooks).
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
