@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
 import { sendNotification } from "@/lib/notifications";
+import { recordActivity, XP } from "@/lib/gamification";
 
 /**
  * Assignment submission and grading (PRD §9.6, §10.4).
@@ -10,7 +11,7 @@ import { sendNotification } from "@/lib/notifications";
  * them — the submitter, or the course's instructor. Nothing is public.
  */
 
-export const SUBMISSION_BUCKET = process.env.SUPABASE_SUBMISSION_BUCKET ?? "submissions";
+export const SUBMISSION_BUCKET = process.env.SUPABASE_SUBMISSION_BUCKET || "submissions";
 
 /** Upload types §9.6 lists, mapped to the extensions we accept. */
 const DEFAULT_ALLOWED = ["pdf", "doc", "docx", "zip", "png", "jpg", "jpeg", "webp", "mp4", "mov"];
@@ -229,6 +230,12 @@ export async function saveSubmission(
           },
           select: { id: true, status: true },
         });
+
+  // XP for submitting, not for saving a draft, and only on the first
+  // submission of an attempt — resubmitting the same work is not new effort.
+  if (input.submit && !submission?.submittedAt) {
+    await recordActivity(userId, XP.ASSIGNMENT_SUBMITTED).catch(() => {});
+  }
 
   return { ok: true, data: { submissionId: saved.id, status: saved.status } };
 }

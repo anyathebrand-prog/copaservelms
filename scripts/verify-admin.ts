@@ -35,6 +35,23 @@ async function makeUser(label: string, roles: string[]) {
   });
 }
 
+/** Remove this run's fixtures, including the courses created for review. */
+async function cleanup() {
+  const users = await prisma.user.findMany({
+    where: { email: { contains: `-${RUN}@demo.local` } },
+    select: { id: true },
+  });
+  const ids = users.map((u) => u.id);
+
+  await prisma.auditLog.deleteMany({
+    where: { OR: [{ actorId: { in: ids } }, { entityId: { in: ids } }] },
+  });
+  await prisma.notification.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.achievement.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.course.deleteMany({ where: { instructorId: { in: ids } } });
+  await prisma.user.deleteMany({ where: { id: { in: ids } } });
+}
+
 async function main() {
   const admin = await makeUser("admin", ["ADMIN"]);
   const superAdmin = await makeUser("super", ["SUPER_ADMIN"]);
@@ -203,8 +220,19 @@ async function finish() {
   console.log(results.join("\n"));
   const passed = results.filter((r) => r.startsWith("PASS")).length;
   console.log(`\n${passed}/${results.length} passed`);
-  await prisma.$disconnect();
-  process.exit(passed === results.length ? 0 : 1);
+  return passed === results.length;
 }
 
-main();
+main()
+  .then(async (ok) => {
+    await cleanup();
+    console.log("cleaned up fixtures");
+    await prisma.$disconnect();
+    process.exit(ok ? 0 : 1);
+  })
+  .catch(async (error) => {
+    console.error(error);
+    await cleanup().catch((e) => console.error("cleanup failed for run", RUN, ":", (e as Error).message));
+    await prisma.$disconnect();
+    process.exit(1);
+  });

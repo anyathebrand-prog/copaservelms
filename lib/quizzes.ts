@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/app/generated/prisma/client";
+import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
 import type { QuestionType } from "@/app/generated/prisma/enums";
 
 /**
@@ -212,6 +213,10 @@ export async function gradeAttempt(
     },
     select: { id: true, passed: true },
   });
+
+  // A pass earns XP; a failed attempt still counts as activity for the streak.
+  await recordActivity(userId, attempt.passed ? XP.QUIZ_PASSED : 0).catch(() => {});
+  await evaluateBadges(userId).catch(() => {});
 
   return {
     ok: true,

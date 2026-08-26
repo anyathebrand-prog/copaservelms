@@ -20,7 +20,10 @@ export interface StorageDriver {
   signedUrl(key: string, expiresInSeconds: number): Promise<string>;
 }
 
-export const CERTIFICATE_BUCKET = process.env.SUPABASE_CERTIFICATE_BUCKET ?? "certificates";
+// `||` not `??`: an env var set to an empty string is a normal way to unset
+// one, and ?? would pass "" through as the bucket name, producing an opaque
+// "Invalid path specified in request URL" from the storage API.
+export const CERTIFICATE_BUCKET = process.env.SUPABASE_CERTIFICATE_BUCKET || "certificates";
 
 /**
  * Supabase Storage driver.
