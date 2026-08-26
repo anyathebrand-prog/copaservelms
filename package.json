@@ -21,13 +21,19 @@
     "verify:privacy": "tsx scripts/verify-privacy.ts",
     "verify:certificates": "tsx scripts/verify-certificates.ts",
     "verify:e2e": "tsx scripts/verify-end-to-end.ts",
-    "verify:assignments": "tsx scripts/verify-assignments.ts"
+    "verify:assignments": "tsx scripts/verify-assignments.ts",
+    "verify:payments": "tsx scripts/verify-payments.ts",
+    "verify:coupons": "tsx scripts/verify-coupons.ts",
+    "verify:organizations": "tsx scripts/verify-organizations.ts",
+    "verify:notifications": "tsx scripts/verify-notifications.ts",
+    "verify:reports": "tsx scripts/verify-reports.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "exceljs": "^4.4.0",
     "next": "16.3.3",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",

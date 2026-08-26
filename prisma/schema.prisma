@@ -122,6 +122,11 @@ enum PaymentProvider {
   MANUAL
 }
 
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
 enum PaymentStatus {
   PENDING
   SUCCESSFUL
@@ -225,6 +230,8 @@ model User {
   consentLogs         ConsentLog[]
   auditLogs           AuditLog[]
   dataRequests        DataSubjectRequest[]  @relation("DataSubject")
+  couponsCreated      Coupon[]              @relation("CouponCreator")
+  couponRedemptions   CouponRedemption[]
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -374,6 +381,7 @@ model Course {
   payments    Payment[]
   discussions DiscussionPost[]
   badges      Badge[]
+  coupons     Coupon[]
 
   @@index([instructorId])
   @@index([categoryId])
@@ -800,13 +808,70 @@ model Payment {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course      Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  enrollment  Enrollment?        @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  redemptions CouponRedemption[]
 
   @@index([userId])
   @@index([status])
   @@map("payments")
+}
+
+/// Discount code (PRD §13.2).
+///
+/// Redemptions are counted on a separate table rather than only incremented
+/// here, so "how many times has this been used, by whom, on what" is answerable
+/// — a counter alone cannot be audited or reversed.
+model Coupon {
+  id              String       @id @default(uuid()) @db.Uuid
+  /// Stored uppercase; lookups normalise input so "save20" matches "SAVE20".
+  code            String       @unique
+  description     String?
+  type            DiscountType
+  /// Percent (1-100) for PERCENT, kobo for FIXED.
+  value           Int
+  /// Null means unlimited.
+  maxRedemptions  Int?
+  redemptionCount Int          @default(0)
+  /// How many times one person may use it.
+  perUserLimit    Int          @default(1)
+  /// Null scopes the coupon to every course.
+  courseId        String?      @db.Uuid
+  /// Minimum order value before the code applies, in kobo.
+  minAmountMinor  Int          @default(0)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean      @default(true)
+  createdById     String?      @db.Uuid
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  course      Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdBy   User?               @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  redemptions CouponRedemption[]
+
+  @@index([isActive])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id             String   @id @default(uuid()) @db.Uuid
+  couponId       String   @db.Uuid
+  userId         String   @db.Uuid
+  paymentId      String?  @db.Uuid
+  /// What the discount was actually worth, in kobo, at redemption time.
+  discountMinor  Int
+  createdAt      DateTime @default(now())
+
+  coupon  Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  /// One redemption per payment, so a replayed webhook cannot consume the code twice.
+  @@unique([couponId, paymentId])
+  @@index([userId])
+  @@map("coupon_redemptions")
 }
 
 // ---------------------------------------------------------------------------

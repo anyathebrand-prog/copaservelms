@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
+import { sendNotification } from "@/lib/notifications";
 import { evaluateEligibility } from "./eligibility";
 import { renderCertificatePdf } from "./pdf";
 
@@ -145,8 +146,19 @@ export async function issueCertificate(
     return created;
   });
 
-  // Email delivery (§11.1) is deliberately not wired: Resend is Phase 2 (§16).
-  // The certificate is available in-dashboard and by QR in the meantime.
+  // §11.1: the certificate is emailed on issuance. Delivery failure must not
+  // fail issuance — the certificate is valid, stored, and in the dashboard.
+  await sendNotification({
+    userId: enrollment.userId,
+    kind: "certificate.issued",
+    title: `Your certificate for ${enrollment.course.title}`,
+    body:
+      `Congratulations — your certificate has been issued. ` +
+      `Certificate number ${certificateNumber}. It can be verified by anyone at ${verificationUrl}.`,
+    actionUrl: "/student/certificates",
+    channels: ["EMAIL"],
+    metadata: { certificateNumber, credentialId },
+  }).catch(() => {});
 
   return { ok: true, certificateId: certificate.id, certificateNumber, credentialId };
 }

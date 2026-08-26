@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
+import { sendNotification } from "@/lib/notifications";
 
 /**
  * Assignment submission and grading (PRD §9.6, §10.4).
@@ -328,7 +329,7 @@ export async function gradeSubmission(
     };
   }
 
-  await prisma.submission.update({
+  const updated = await prisma.submission.update({
     where: { id: submissionId },
     data: {
       grade: Math.round(input.grade),
@@ -338,7 +339,19 @@ export async function gradeSubmission(
       gradedById: graderId,
       gradedAt: new Date(),
     },
+    select: { userId: true, assignment: { select: { id: true, title: true, maxPoints: true } } },
   });
+
+  await sendNotification({
+    userId: updated.userId,
+    kind: "assignment.graded",
+    title: `${updated.assignment.title} has been graded`,
+    body: `You scored ${Math.round(input.grade)}/${updated.assignment.maxPoints}.${
+      input.feedback?.trim() ? ` Feedback: ${input.feedback.trim()}` : ""
+    }`,
+    actionUrl: `/student/assignments/${updated.assignment.id}`,
+    channels: ["EMAIL"],
+  }).catch(() => {});
 
   return { ok: true, data: { grade: Math.round(input.grade) } };
 }
