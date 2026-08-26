@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Logo } from "@/components/layout/logo";
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-surface-muted">
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 sm:grid-cols-3">
         <div>
-          <p className="font-display text-lg font-bold text-brand">CopaServe</p>
+          <Logo height={26} />
           <p className="mt-2 text-sm text-muted-foreground">
             Learn. Get Certified. Verify. Mint.
           </p>

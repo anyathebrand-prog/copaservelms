@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
 
@@ -68,8 +70,24 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
     page.drawText(text, { x: (WIDTH - width) / 2, y, size, font, color });
   };
 
-  centre(fields.institutionName.toUpperCase(), sansBold, 11, HEIGHT - 80, BRAND);
-  centre("CERTIFICATE OF COMPLETION", serifBold, 30, HEIGHT - 130, INK);
+  // Institution logo (§11.2). Read from disk rather than fetched: issuance
+  // must not depend on the app being reachable over HTTP, and a missing file
+  // falls back to the wordmark rather than failing the certificate.
+  const logo = await loadLogo(pdf);
+  if (logo) {
+    const logoHeight = 34;
+    const logoWidth = logoHeight * (logo.width / logo.height);
+    page.drawImage(logo.image, {
+      x: (WIDTH - logoWidth) / 2,
+      y: HEIGHT - 78 - logoHeight / 2,
+      width: logoWidth,
+      height: logoHeight,
+    });
+  } else {
+    centre(fields.institutionName.toUpperCase(), sansBold, 11, HEIGHT - 80, BRAND);
+  }
+  centre(fields.institutionName.toUpperCase(), sans, 8, HEIGHT - 104, MUTED);
+  centre("CERTIFICATE OF COMPLETION", serifBold, 30, HEIGHT - 138, INK);
   centre("This is to certify that", serif, 13, HEIGHT - 175, MUTED);
 
   // The holder's name is the focal point, so it is sized to fit rather than
@@ -128,6 +146,22 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
   });
 
   return pdf.save();
+}
+
+/**
+ * Embed the brand lockup, or null when it is unavailable.
+ *
+ * A certificate without a logo is still a valid certificate; one that fails to
+ * generate is not. So this never throws.
+ */
+async function loadLogo(pdf: PDFDocument) {
+  try {
+    const bytes = await readFile(join(process.cwd(), "public/brand/copaserve-logo.png"));
+    const image = await pdf.embedPng(bytes);
+    return { image, width: image.width, height: image.height };
+  } catch {
+    return null;
+  }
 }
 
 /** Shrink until the text fits the available width, down to a floor. */
