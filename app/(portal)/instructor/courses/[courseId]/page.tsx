@@ -56,6 +56,12 @@ export default async function EditCoursePage({
           >
             Students
           </Link>
+          <Link
+            href={`/instructor/courses/${course.id}/live-classes`}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface-muted"
+          >
+            Live classes
+          </Link>
 
           {course.status === "DRAFT" && (
             <form action={setStatusAction}>

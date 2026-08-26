@@ -47,3 +47,6 @@ next-env.d.ts
 .claude/skills/
 .windsurf/skills/
 .agents/skills/
+
+# locally generated preview artefacts
+sample-certificate.pdf

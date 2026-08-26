@@ -28,7 +28,7 @@ export interface SmsDriver {
 // `||` rather than `??`: an env var set to an empty string is a common way to
 // "unset" one, and ?? would pass the empty string through as the sender —
 // which the provider rejects as an invalid domain.
-const FROM_EMAIL = process.env.NOTIFICATION_FROM_EMAIL || "CopaServe <no-reply@bitlearn.ng>";
+const FROM_EMAIL = process.env.NOTIFICATION_FROM_EMAIL || "CopaServe <no-reply@copaserve.ng>";
 const SMS_SENDER = process.env.TERMII_SENDER_ID || "CopaServe";
 
 class ResendDriver implements EmailDriver {

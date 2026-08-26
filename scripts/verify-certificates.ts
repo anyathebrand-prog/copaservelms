@@ -188,7 +188,7 @@ async function main() {
     credentialId: "testcredential123",
     issueDate: new Date(),
     expiryDate: null,
-    verificationUrl: "https://verify.bitlearn.ng/testcredential123",
+    verificationUrl: "https://verify.copaserve.ng/testcredential123",
   });
 
   const header = Buffer.from(pdf.slice(0, 5)).toString("latin1");
@@ -206,10 +206,13 @@ async function main() {
   check("holder and course appear in the document title",
     (parsed.getTitle() ?? "").includes("Emeka Okonkwo"), `${parsed.getTitle()}`);
 
-  // The QR is the only embedded image, so exactly one image XObject means it
-  // was drawn — a certificate whose QR silently failed would still "render".
+  // Two images are drawn: the QR and the institution logo. The logo is a PNG
+  // with transparency, which pdf-lib embeds as an image plus a soft mask, so
+  // the object count is three. Asserting "at least two" keeps the check
+  // meaningful without pinning it to that encoding detail.
   const imageCount = (Buffer.from(pdf).toString("latin1").match(/\/Subtype\s*\/Image/g) ?? []).length;
-  check("QR code is embedded as an image", imageCount === 1, `${imageCount} image xobject(s)`);
+  check("QR code and logo are embedded as images", imageCount >= 2,
+    `${imageCount} image xobject(s) — QR, logo, and the logo's alpha mask`);
 
   // --- issuance -----------------------------------------------------------
   const storageReady = isStorageConfigured();

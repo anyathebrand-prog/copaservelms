@@ -6,9 +6,8 @@ import { usePathname } from "next/navigation";
 /**
  * Student sidebar (PRD §9.2).
  *
- * Live Classes and Wallet are omitted deliberately: they are Phase 2 and
- * Phase 4 respectively (§16), and a nav item that leads nowhere is worse than
- * an absent one.
+ * Wallet is omitted deliberately: it is Phase 4 (§16), and a nav item that
+ * leads nowhere is worse than an absent one.
  */
 const NAV = [
   { href: "/student", label: "Dashboard" },
@@ -16,6 +15,7 @@ const NAV = [
   { href: "/student/certificates", label: "Certificates" },
   { href: "/student/assignments", label: "Assignments" },
   { href: "/student/quizzes", label: "Quizzes" },
+  { href: "/student/live-classes", label: "Live Classes" },
   { href: "/student/notifications", label: "Notifications" },
   { href: "/student/payments", label: "Payments" },
   { href: "/student/profile", label: "Profile" },
