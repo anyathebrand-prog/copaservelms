@@ -17,7 +17,7 @@ export const INSTITUTION_NAME =
   process.env.NEXT_PUBLIC_INSTITUTION_NAME ?? "Business Intelligence Technologies Limited";
 
 const VERIFY_BASE =
-  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL ?? "https://verify.bitlearn.ng";
+  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL ?? "https://verify.copaserve.ng";
 
 export type IssueError =
   | "NOT_FOUND"

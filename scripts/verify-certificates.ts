@@ -188,7 +188,7 @@ async function main() {
     credentialId: "testcredential123",
     issueDate: new Date(),
     expiryDate: null,
-    verificationUrl: "https://verify.bitlearn.ng/testcredential123",
+    verificationUrl: "https://verify.copaserve.ng/testcredential123",
   });
 
   const header = Buffer.from(pdf.slice(0, 5)).toString("latin1");

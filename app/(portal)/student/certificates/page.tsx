@@ -5,7 +5,7 @@ import { getStudentCertificates } from "@/lib/student";
 export const metadata: Metadata = { title: "Certificates" };
 
 const VERIFY_BASE =
-  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL ?? "https://verify.bitlearn.ng";
+  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL ?? "https://verify.copaserve.ng";
 
 export default async function CertificatesPage() {
   const user = await requireUser("/student/certificates");
