@@ -113,6 +113,46 @@ Schema is managed via Prisma and includes: `Users`, `Profiles`, `Roles`, `Course
 
 All role-scoped and user-owned tables **must** have Row Level Security policies defined before UI ships against them. `AuditLogs` and `ConsentLogs` are append-only.
 
+## Pending configuration
+
+Everything below works in code and is verified against the live database. These
+items are waiting on external setup, not on development.
+
+### Email and SMS delivery — waiting on a domain
+
+Notifications are written in-app and delivery is attempted, but **no email
+currently leaves the system**: Resend will not verify `copaserve.ng` because the
+domain is not yet registered, and it cannot verify `*.vercel.app` because we do
+not control its DNS. Failures are recorded rather than hidden — nothing claims
+to have sent.
+
+To finish this later:
+
+1. Register `copaserve.ng` and delegate it to nameservers you control.
+2. Add the domain in Resend and publish the DKIM/SPF records it gives you.
+   Wait for the dashboard to say **Verified**, not Pending.
+3. Set `NOTIFICATION_FROM_EMAIL` to an address on that domain.
+4. Point `verify.copaserve.ng` (or the apex) at the deployment, and set
+   `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_VERIFICATION_BASE_URL` accordingly.
+
+Termii is authenticated and working, but the account balance is low and no SMS
+has been sent from this project yet.
+
+### The one deadline: issue no real certificates before the domain is settled
+
+Certificate QR codes bake in their verification URL **at issuance**. While there
+are zero certificates, changing the domain is a config edit. After the first
+real certificate is issued it becomes a data migration plus a permanent redirect
+obligation, because codes already printed or emailed cannot be recalled.
+
+Current base: `https://copaservelms.vercel.app/verify`.
+
+### Also outstanding
+
+- **Google and Microsoft sign-in** need enabling in Supabase → Authentication →
+  Providers. Email/password and magic link already work.
+- **Nobody has used the app in a browser.** Every check so far is server-side.
+
 ## Roadmap
 
 | Phase | Focus |

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { absoluteUrl } from "@/lib/app-url";
 import {
   getEmailDriver,
   getSmsDriver,
@@ -204,8 +205,9 @@ async function deliverSms(
 /** Minimal branded HTML. Inline styles, because email clients ignore stylesheets. */
 function renderHtml(input: SendInput, firstName: string): string {
   const greeting = firstName ? `Hello ${escapeHtml(firstName)},` : "Hello,";
+  // Absolute, because a relative path in an email client points nowhere.
   const action = input.actionUrl
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(input.actionUrl)}" style="background:#0a510e;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open CopaServe</a></p>`
+    ? `<p style="margin:24px 0"><a href="${escapeHtml(absoluteUrl(input.actionUrl))}" style="background:#0a510e;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open CopaServe</a></p>`
     : "";
 
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#f5f7f5;font-family:Inter,Arial,sans-serif;color:#0b0b0b">

@@ -41,6 +41,13 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           </p>
         </div>
 
+        <Link
+          href={`/student/courses/${slug}/discussions`}
+          className="mt-6 mr-3 inline-block rounded-lg border border-border px-5 py-3 text-sm font-medium transition hover:bg-surface-muted"
+        >
+          Discussion
+        </Link>
+
         {nextLesson && (
           <Link
             href={`/student/courses/${slug}/lessons/${nextLesson.id}`}
