@@ -21,6 +21,19 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   { id: "azure", label: "Microsoft" },
 ];
 
+/**
+ * Whether the browser actually has what it needs.
+ *
+ * NEXT_PUBLIC_* values are inlined at BUILD time, so a variable that exists at
+ * runtime on the server can still be absent here — which is exactly what
+ * happens when it is marked sensitive on the host. The server's view of
+ * "configured" therefore cannot speak for the client, and trusting it produced
+ * a sign-in button that threw on click and simply looked dead.
+ */
+const CLIENT_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
+
 export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,12 +53,31 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/student";
   const callbackUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?next=${encodeURIComponent(safeNext)}`;
 
+  /** Never let a handler throw into the void: a dead button tells the user nothing. */
+  function reportFailure(cause: unknown) {
+    setPending(false);
+    setError(
+      cause instanceof Error && cause.message.startsWith("Missing environment variable")
+        ? "Sign-in is unavailable: this deployment is missing its Supabase configuration."
+        : "Something went wrong. Please try again.",
+    );
+    console.error(cause);
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const supabase = createSupabaseBrowserClient();
     setPending(true);
     setError(null);
     setNotice(null);
+
+    let supabase;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch (cause) {
+      return reportFailure(cause);
+    }
+
+    try {
 
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
@@ -62,44 +94,57 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
       return setNotice("Check your email to confirm your account, then sign in.");
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setPending(false);
-    if (error) return setError(error.message);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setPending(false);
+      if (error) return setError(error.message);
 
-    router.push(safeNext);
-    // Server Components cache the previous (signed-out) render.
-    router.refresh();
+      router.push(safeNext);
+      // Server Components cache the previous (signed-out) render.
+      router.refresh();
+    } catch (cause) {
+      reportFailure(cause);
+    }
   }
 
   async function handleMagicLink() {
     if (!email) return setError("Enter your email address first.");
-    const supabase = createSupabaseBrowserClient();
     setPending(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: callbackUrl },
-    });
-    setPending(false);
-    if (error) return setError(error.message);
-    setNotice("Magic link sent. Check your inbox.");
-  }
 
-  async function handleOAuth(provider: Provider) {
-    const supabase = createSupabaseBrowserClient();
-    setPending(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: callbackUrl },
-    });
-    if (error) {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: callbackUrl },
+      });
       setPending(false);
-      setError(error.message);
+      if (error) return setError(error.message);
+      setNotice("Magic link sent. Check your inbox.");
+    } catch (cause) {
+      reportFailure(cause);
     }
   }
 
-  if (!configured) {
+  async function handleOAuth(provider: Provider) {
+    setPending(true);
+    setError(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: callbackUrl },
+      });
+      if (error) {
+        setPending(false);
+        setError(error.message);
+      }
+    } catch (cause) {
+      reportFailure(cause);
+    }
+  }
+
+  if (!configured || !CLIENT_CONFIGURED) {
     return (
       <div className="glass-panel rounded-2xl p-8">
         <h1 className="font-display text-2xl font-bold tracking-tight">Sign-in unavailable</h1>
@@ -110,7 +155,8 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
           <code className="rounded bg-surface-muted px-1 py-0.5 text-xs">
             NEXT_PUBLIC_SUPABASE_ANON_KEY
           </code>{" "}
-          to enable it.
+          to enable it. They must be readable at build time — on Vercel, marking them
+          sensitive hides them from the build, so the browser never receives them.
         </p>
         <Link href="/" className="mt-6 inline-block text-sm font-medium text-brand hover:underline">
           ← Back to home
