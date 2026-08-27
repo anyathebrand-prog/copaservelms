@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import { verificationBase } from "@/lib/app-url";
 import { requireUser } from "@/lib/roles";
 import { getStudentCertificates } from "@/lib/student";
 
 export const metadata: Metadata = { title: "Certificates" };
 
-const VERIFY_BASE =
-  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL || "https://verify.copaserve.ng";
+const VERIFY_BASE = verificationBase();
 
 export default async function CertificatesPage() {
   const user = await requireUser("/student/certificates");

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { verificationBase } from "@/lib/app-url";
 import { getStorage } from "@/lib/storage";
 import { sendNotification } from "@/lib/notifications";
 import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
@@ -17,8 +18,7 @@ import { renderCertificatePdf } from "./pdf";
 export const INSTITUTION_NAME =
   process.env.NEXT_PUBLIC_INSTITUTION_NAME || "Business Intelligence Technologies Limited";
 
-const VERIFY_BASE =
-  process.env.NEXT_PUBLIC_VERIFICATION_BASE_URL || "https://verify.copaserve.ng";
+const VERIFY_BASE = verificationBase();
 
 export type IssueError =
   | "NOT_FOUND"
