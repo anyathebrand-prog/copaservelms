@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { browserSupabaseConfigured, createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
  * Sign-in / sign-up form covering the methods in PRD §8.1.
@@ -20,19 +20,6 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   // Supabase names the Microsoft provider "azure".
   { id: "azure", label: "Microsoft" },
 ];
-
-/**
- * Whether the browser actually has what it needs.
- *
- * NEXT_PUBLIC_* values are inlined at BUILD time, so a variable that exists at
- * runtime on the server can still be absent here — which is exactly what
- * happens when it is marked sensitive on the host. The server's view of
- * "configured" therefore cannot speak for the client, and trusting it produced
- * a sign-in button that threw on click and simply looked dead.
- */
-const CLIENT_CONFIGURED = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
 
 export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean }) {
   const router = useRouter();
@@ -144,7 +131,7 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
     }
   }
 
-  if (!configured || !CLIENT_CONFIGURED) {
+  if (!configured || !browserSupabaseConfigured()) {
     return (
       <div className="glass-panel rounded-2xl p-8">
         <h1 className="font-display text-2xl font-bold tracking-tight">Sign-in unavailable</h1>
