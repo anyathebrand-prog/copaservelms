@@ -11,12 +11,15 @@ import { usePathname } from "next/navigation";
  */
 const NAV = [
   { href: "/student", label: "Dashboard" },
+  { href: "/student/search", label: "Search" },
   { href: "/student/courses", label: "My Courses" },
   { href: "/student/certificates", label: "Certificates" },
+  { href: "/student/downloads", label: "Downloads" },
   { href: "/student/achievements", label: "Achievements" },
   { href: "/student/assignments", label: "Assignments" },
   { href: "/student/quizzes", label: "Quizzes" },
   { href: "/student/live-classes", label: "Live Classes" },
+  { href: "/student/calendar", label: "Calendar" },
   { href: "/student/notifications", label: "Notifications" },
   { href: "/student/payments", label: "Payments" },
   { href: "/student/profile", label: "Profile" },

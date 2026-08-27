@@ -31,7 +31,8 @@
     "verify:gamification": "tsx scripts/verify-gamification.ts",
     "verify:discussions": "tsx scripts/verify-discussions.ts",
     "demo:seed": "tsx scripts/seed-demo.ts",
-    "demo:clear": "tsx scripts/clear-demo.ts"
+    "demo:clear": "tsx scripts/clear-demo.ts",
+    "verify:discovery": "tsx scripts/verify-discovery.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

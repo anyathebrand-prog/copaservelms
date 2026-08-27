@@ -159,8 +159,14 @@ async function main() {
     `${afterConcurrent} rows, ${new Set(distinct.map((d) => d.badgeId)).size} distinct`);
 
   // --- streaks ------------------------------------------------------------
-  // Backdate the profile to simulate yesterday's activity.
-  const yesterday = new Date(Date.now() - 26 * 3600_000);
+  //
+  // "Yesterday" is constructed from the UTC calendar day rather than by
+  // subtracting hours. Subtracting 26 hours lands two calendar days back when
+  // the clock is before 02:00 UTC, which made this assertion fail depending on
+  // the time of day it ran — the streak logic was right, the fixture was not.
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const yesterday = new Date(startOfToday.getTime() - 12 * 3600_000);
   await prisma.profile.update({
     where: { userId: learner.id },
     data: { updatedAt: yesterday, currentStreak: 3 },
