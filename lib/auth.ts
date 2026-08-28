@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -13,8 +14,17 @@ export type CurrentUser = {
  * Uses getUser() rather than getSession(): getSession() trusts the cookie as
  * stored, while getUser() revalidates the JWT with the auth server. For an
  * authorisation decision, only the latter is safe.
+ *
+ * Wrapped in React's cache(), which deduplicates within a single request only.
+ * Without it every caller repeats both calls — and a portal page has several:
+ * the layout guards, the page guards again, then components ask for the user.
+ * Each repeat costs an auth round-trip plus a query, which is the difference
+ * between one and five network hops before anything renders.
+ *
+ * This is per-request memoisation, not a cache across requests: a revoked
+ * session or a suspended account is still noticed on the very next request.
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,7 +54,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     email: appUser.email,
     roles: appUser.roles.map((r) => r.role.name),
   };
-}
+});
 
 export function isAdmin(user: CurrentUser): boolean {
   return user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
