@@ -151,6 +151,32 @@ async function main() {
   check("the portal shell offers a way to switch between areas",
     shell.includes("AreaSwitcher"), "switcher present");
 
+  // --- the redirect loop --------------------------------------------------
+  //
+  // updateSession may rotate the auth cookies. A redirect built from scratch
+  // drops them, and since a used refresh token is invalidated, the browser is
+  // left with credentials that no longer work: the next request bounces to
+  // /login, which sees a session and bounces back, forever. It presents as a
+  // blank page rather than an error, which is why it is worth asserting
+  // directly rather than trusting review.
+  const middleware = await fs.readFile("middleware.ts", "utf8");
+
+  check("middleware never builds a bare redirect that would drop cookies",
+    !/return NextResponse\.redirect\(/.test(middleware),
+    /return NextResponse\.redirect\(/.test(middleware) ? "bare redirect present" : "none");
+
+  check("redirects carry the refreshed session cookies",
+    middleware.includes("redirectPreservingSession") &&
+      middleware.includes("sessionResponse.cookies.getAll()"),
+    "cookies copied");
+
+  check("signed-in users hitting /login are sent to the role resolver",
+    middleware.includes('url.pathname = "/portal"'), "portal");
+
+  const loginRedirects = (middleware.match(/url\.pathname = "\/student"/g) ?? []).length;
+  check("middleware no longer sends anyone to a fixed portal",
+    loginRedirects === 0, `${loginRedirects} hard-coded`);
+
   return finish();
 }
 
