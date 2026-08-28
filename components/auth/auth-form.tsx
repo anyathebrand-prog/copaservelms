@@ -24,7 +24,9 @@ const PROVIDERS: { id: Provider; label: string }[] = [
 export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/student";
+  // "/portal" resolves the right dashboard server-side: roles live in the
+  // database, so the browser cannot decide this and must not guess.
+  const next = searchParams.get("next") ?? "/portal";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +39,7 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
   const [notice, setNotice] = useState<string | null>(null);
 
   // Only relative paths survive, or a crafted ?next= becomes an open redirect.
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/student";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/portal";
   const callbackUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?next=${encodeURIComponent(safeNext)}`;
 
   /** Never let a handler throw into the void: a dead button tells the user nothing. */

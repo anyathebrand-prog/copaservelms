@@ -11,10 +11,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/student";
+  const next = searchParams.get("next") ?? "/portal";
 
   // Only relative paths, or this becomes an open redirect.
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/student";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/portal";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
