@@ -20,6 +20,18 @@ function check(name: string, pass: boolean, detail: string) {
   results.push(`${pass ? "PASS" : "FAIL"}  ${name} — ${detail}`);
 }
 
+/**
+ * Accounts this run suspended that it did not create.
+ *
+ * The last-super-admin scenario needs the fixture to be the only active super
+ * admin, which means quieting any others that already exist. Those belong to
+ * the database, not to this test, so they are recorded and restored — leaving
+ * one suspended locked a real administrator out of the deployed app, and the
+ * symptom was an unexplained sign-in loop rather than anything mentioning
+ * suspension.
+ */
+const suspendedByThisRun: string[] = [];
+
 const ADMIN = ["ADMIN"];
 const SUPER = ["SUPER_ADMIN"];
 const STUDENT = ["STUDENT"];
@@ -37,6 +49,15 @@ async function makeUser(label: string, roles: string[]) {
 
 /** Remove this run's fixtures, including the courses created for review. */
 async function cleanup() {
+  // Restore first: if anything below fails, the borrowed accounts are already
+  // back rather than left suspended.
+  if (suspendedByThisRun.length > 0) {
+    await prisma.user.updateMany({
+      where: { id: { in: suspendedByThisRun } },
+      data: { status: "ACTIVE" },
+    });
+  }
+
   const users = await prisma.user.findMany({
     where: { email: { contains: `-${RUN}@demo.local` } },
     select: { id: true },
@@ -150,6 +171,7 @@ async function main() {
   });
   for (const other of otherSupers) {
     await prisma.user.update({ where: { id: other.id }, data: { status: "SUSPENDED" } });
+    suspendedByThisRun.push(other.id);
   }
 
   // These assert the self-target guard, which is what actually prevents a

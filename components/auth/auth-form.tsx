@@ -34,7 +34,11 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
   const [lastName, setLastName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(
-    searchParams.get("error") ? "We could not complete that sign-in. Please try again." : null,
+    searchParams.get("error") === "account_unavailable"
+      ? "Your sign-in worked, but this account is not active on CopaServe. Contact your administrator."
+      : searchParams.get("error")
+        ? "We could not complete that sign-in. Please try again."
+        : null,
   );
   const [notice, setNotice] = useState<string | null>(null);
 
