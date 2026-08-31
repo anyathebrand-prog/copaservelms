@@ -33,7 +33,8 @@
     "demo:seed": "tsx scripts/seed-demo.ts",
     "demo:clear": "tsx scripts/clear-demo.ts",
     "verify:discovery": "tsx scripts/verify-discovery.ts",
-    "verify:routing": "tsx scripts/verify-routing.ts"
+    "verify:routing": "tsx scripts/verify-routing.ts",
+    "verify:wallet": "tsx scripts/verify-wallet.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -45,7 +46,8 @@
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "viem": "^2.56.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

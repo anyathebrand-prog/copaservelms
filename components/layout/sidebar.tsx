@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 /**
  * Student sidebar (PRD §9.2).
  *
- * Wallet is omitted deliberately: it is Phase 4 (§16), and a nav item that
- * leads nowhere is worse than an absent one.
+ * Wallet is present but minting is not: linking a wallet works, while minting
+ * waits on a deployed contract (§17 question 6).
  */
 const NAV = [
   { href: "/student", label: "Dashboard" },
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/student/live-classes", label: "Live Classes" },
   { href: "/student/calendar", label: "Calendar" },
   { href: "/student/notifications", label: "Notifications" },
+  { href: "/student/wallet", label: "Wallet" },
   { href: "/student/payments", label: "Payments" },
   { href: "/student/profile", label: "Profile" },
   { href: "/student/privacy", label: "Privacy" },

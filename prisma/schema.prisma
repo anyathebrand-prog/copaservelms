@@ -233,6 +233,7 @@ model User {
   couponsCreated      Coupon[]              @relation("CouponCreator")
   couponRedemptions   CouponRedemption[]
   discussionLikes     DiscussionLike[]
+  walletChallenges    WalletChallenge[]
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -756,6 +757,30 @@ model Wallet {
   @@unique([userId, address, chainId])
   @@index([address])
   @@map("wallets")
+}
+
+/// A one-time challenge proving someone controls a wallet address (PRD §11.5).
+///
+/// An address typed into a form proves nothing — anyone can claim any address.
+/// Linking therefore requires signing a nonce issued here, and the signature is
+/// verified server-side. The row is consumed on use so a captured signature
+/// cannot be replayed.
+model WalletChallenge {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  /// The random string the wallet is asked to sign.
+  nonce     String    @unique
+  /// Bound at issue time, so a signature for one address cannot link another.
+  address   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("wallet_challenges")
 }
 
 model MintTransaction {
