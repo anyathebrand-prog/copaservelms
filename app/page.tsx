@@ -49,7 +49,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader dark />
 
       <main className="flex-1">
         {/* 1. Hero */}
@@ -59,8 +59,9 @@ export default async function HomePage() {
         <Section
           id="courses"
           eyebrow="Featured"
-          title="Courses built by practitioners"
-          description="Certification tracks designed by compliance and governance professionals, not generalists."
+          title="Courses built by practitioners,"
+          lede="not generalists."
+          description="Certification tracks designed by the compliance and governance professionals who do this work daily."
         >
           {featured.length === 0 ? (
             <Card className="text-center">
@@ -118,7 +119,8 @@ export default async function HomePage() {
         <Section
           muted
           eyebrow="Certifications"
-          title="Credentials that hold up to scrutiny"
+          title="Credentials that hold up"
+          lede="to scrutiny."
           description="Every track ends in a certificate an employer or regulator can verify in seconds."
         >
           {categories.length === 0 ? (
@@ -156,7 +158,8 @@ export default async function HomePage() {
         {/* 4. Why Learn with BIT */}
         <Section
           eyebrow="Why BIT Ltd"
-          title="Built by a compliance firm, for compliance professionals"
+          title="Built by a compliance firm,"
+          lede="for compliance professionals."
         >
           <div className="grid gap-10 sm:grid-cols-3">
             {WHY_BIT.map((item, index) => (
@@ -175,19 +178,21 @@ export default async function HomePage() {
 
         {/* 5. Certificate Verification — the differentiator, so it gets the
             page's one dark band and the visual weight that comes with it. */}
-        <section id="verify" className="relative overflow-hidden bg-brand text-white">
+        <section id="verify" className="hero-ink grain relative overflow-hidden text-white">
+          <div aria-hidden className="hero-grid absolute inset-0" />
           <div
             aria-hidden
-            className="absolute -right-24 -top-24 size-96 rounded-full bg-brand-bright/10 blur-3xl"
+            className="absolute -right-24 -top-24 size-96 rounded-full bg-brand-bright/12 blur-[100px]"
           />
-          <div className="relative mx-auto max-w-6xl px-6 py-24">
+          <div className="relative mx-auto max-w-6xl px-6 py-28">
             <Reveal>
-              <p className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-brand-bright">
+              <p className="mb-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-bright">
                 <ScanLine className="size-4" />
                 Verification
               </p>
-              <h2 className="max-w-2xl font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                Check any certificate in seconds
+              <h2 className="max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+                Check any certificate
+                <span className="block text-white/40">in seconds.</span>
               </h2>
               <p className="mt-4 max-w-2xl text-lg text-white/70">
                 Every certificate carries a QR code linking here. No account, no login — enter an ID
@@ -204,7 +209,8 @@ export default async function HomePage() {
         {/* 6. Wallet-ready Certificates */}
         <Section
           eyebrow="Web3-ready"
-          title="Your certificate, optionally on-chain"
+          title="Your certificate,"
+          lede="optionally on-chain."
           description="Learning and certification never require a wallet. Minting is an addition for those who want it, not a dependency."
         >
           <div className="grid gap-6 sm:grid-cols-3">
@@ -222,17 +228,16 @@ export default async function HomePage() {
 
         {/* 7. Testimonials */}
         <Section muted eyebrow="Testimonials" title="What learners say">
-          <Card className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Learner stories will appear here once the first cohorts complete their certification.
-            </p>
-          </Card>
+          <p className="rounded-3xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+            Learner stories will appear here once the first cohorts complete their certification.
+          </p>
         </Section>
 
         {/* 8. Corporate Training */}
         <Section
           eyebrow="For organisations"
-          title="Train your team, prove it to your regulator"
+          title="Train your team,"
+          lede="prove it to your regulator."
           description="Bulk enrolment, cohort management, and compliance reporting for banks, telcos, and government agencies."
         >
           <Reveal>
@@ -254,11 +259,9 @@ export default async function HomePage() {
 
         {/* 9. Trusted Institutions */}
         <Section muted eyebrow="Trusted by" title="Institutions we work with">
-          <Card className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Partner institution logos appear here once launch partners are confirmed.
-            </p>
-          </Card>
+          <p className="rounded-3xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+            Partner institution logos appear here once launch partners are confirmed.
+          </p>
         </Section>
 
         {/* 10. FAQ */}
