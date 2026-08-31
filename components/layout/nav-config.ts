@@ -157,3 +157,20 @@ export function isActive(href: string, pathname: string): boolean {
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/**
+ * Areas, addressed by name.
+ *
+ * The config holds real icon components, which cannot cross the server/client
+ * boundary as props — React can only send serialisable values, and a component
+ * reference is a function. So the shell names an area and the client
+ * navigation looks it up here, keeping one source of truth without shipping
+ * the config through props.
+ */
+export type PortalArea = "student" | "instructor" | "admin";
+
+export const NAV_BY_AREA: Record<PortalArea, { groups: NavGroup[]; label: string }> = {
+  student: { groups: STUDENT_NAV, label: "Student navigation" },
+  instructor: { groups: INSTRUCTOR_NAV, label: "Instructor navigation" },
+  admin: { groups: ADMIN_NAV, label: "Admin navigation" },
+};

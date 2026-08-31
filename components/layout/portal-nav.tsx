@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isActive, type NavGroup } from "@/components/layout/nav-config";
+import { isActive, NAV_BY_AREA, type PortalArea } from "@/components/layout/nav-config";
 
 /**
  * The ink sidebar (PRD §6.3 "collapsible sidebar on desktop/tablet").
@@ -12,8 +12,9 @@ import { isActive, type NavGroup } from "@/components/layout/nav-config";
  * green rail rather than a filled block: on ink, a filled pill is a hole in
  * the sidebar, while a rail reads as a marker.
  */
-export function PortalNav({ groups, label }: { groups: NavGroup[]; label: string }) {
+export function PortalNav({ area }: { area: PortalArea }) {
   const pathname = usePathname();
+  const { groups, label } = NAV_BY_AREA[area];
 
   return (
     <nav aria-label={label} className="space-y-7">

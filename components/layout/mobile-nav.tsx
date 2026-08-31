@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { isActive, type NavGroup } from "@/components/layout/nav-config";
+import { isActive, NAV_BY_AREA, type PortalArea } from "@/components/layout/nav-config";
 
 /**
  * Bottom navigation for phones (PRD §6.3 "bottom nav on mobile").
@@ -17,9 +17,10 @@ import { isActive, type NavGroup } from "@/components/layout/nav-config";
  * grouped list. Splitting it that way keeps the bar readable at thumb size
  * without hiding anything: everything in the sidebar is still reachable here.
  */
-export function MobileNav({ groups, label }: { groups: NavGroup[]; label: string }) {
+export function MobileNav({ area }: { area: PortalArea }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { groups, label } = NAV_BY_AREA[area];
 
   const primary = groups.flatMap((group) => group.items.filter((item) => item.primary)).slice(0, 4);
 

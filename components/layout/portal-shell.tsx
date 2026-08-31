@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { NavGroup } from "@/components/layout/nav-config";
+import type { PortalArea } from "@/components/layout/nav-config";
 import { PortalNav } from "@/components/layout/portal-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 
@@ -14,23 +14,19 @@ import { MobileNav } from "@/components/layout/mobile-nav";
  * bar, and the work happens on a light surface inside it. Dark chrome ties the
  * portal to the landing page; a light canvas is what makes a table of thirty
  * rows readable for an hour.
+ *
+ * Only the area's name crosses into the client components. The nav config
+ * holds real icon components, and a component reference is a function, which
+ * React cannot serialise across the server/client boundary.
  */
-export function PortalShell({
-  nav,
-  navLabel,
-  children,
-}: {
-  nav: NavGroup[];
-  navLabel: string;
-  children: ReactNode;
-}) {
+export function PortalShell({ area, children }: { area: PortalArea; children: ReactNode }) {
   return (
     <div className="flex flex-1">
       <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-brand-ink lg:block">
         {/* Sticky under the top bar, and scrollable on its own so a long nav
             never traps the page. */}
         <div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto px-6 py-7">
-          <PortalNav groups={nav} label={navLabel} />
+          <PortalNav area={area} />
         </div>
       </aside>
 
@@ -39,7 +35,7 @@ export function PortalShell({
         <div className="mx-auto max-w-6xl px-5 pb-28 pt-7 sm:px-8 sm:pt-9 lg:pb-12">{children}</div>
       </main>
 
-      <MobileNav groups={nav} label={navLabel} />
+      <MobileNav area={area} />
     </div>
   );
 }
