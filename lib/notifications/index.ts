@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { absoluteUrl } from "@/lib/app-url";
+import { getSettings } from "@/lib/settings";
 import {
   getEmailDriver,
   getSmsDriver,
@@ -165,12 +166,13 @@ async function deliverEmail(
   if (prefs.EMAIL === false) return "opted-out";
   if (marketing && !(await hasMarketingConsent(user.id, "EMAIL"))) return "no-consent";
 
+  const settings = await getSettings();
   const emailDriver = driver ?? getEmailDriver();
   const result = await emailDriver.send({
     to: user.email,
     subject: input.title,
     text: input.body,
-    html: renderHtml(input, user.profile?.firstName ?? ""),
+    html: renderHtml(input, user.profile?.firstName ?? "", settings),
   });
 
   if (!result.ok) {
@@ -203,21 +205,29 @@ async function deliverSms(
 }
 
 /** Minimal branded HTML. Inline styles, because email clients ignore stylesheets. */
-function renderHtml(input: SendInput, firstName: string): string {
+function renderHtml(
+  input: SendInput,
+  firstName: string,
+  branding: { institutionName: string; primaryColor: string; supportEmail: string | null },
+): string {
   const greeting = firstName ? `Hello ${escapeHtml(firstName)},` : "Hello,";
   // Absolute, because a relative path in an email client points nowhere.
   const action = input.actionUrl
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(absoluteUrl(input.actionUrl))}" style="background:#0a510e;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open CopaServe</a></p>`
+    ? `<p style="margin:24px 0"><a href="${escapeHtml(absoluteUrl(input.actionUrl))}" style="background:${escapeHtml(branding.primaryColor)};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open CopaServe</a></p>`
     : "";
 
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#f5f7f5;font-family:Inter,Arial,sans-serif;color:#0b0b0b">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:32px">
-<p style="margin:0 0 8px;color:#0a510e;font-weight:700;letter-spacing:.04em;font-size:12px">COPASERVE</p>
+<p style="margin:0 0 8px;color:${escapeHtml(branding.primaryColor)};font-weight:700;letter-spacing:.04em;font-size:12px">COPASERVE</p>
 <h1 style="margin:0 0 16px;font-size:20px">${escapeHtml(input.title)}</h1>
 <p style="margin:0 0 8px">${greeting}</p>
 <p style="margin:0;line-height:1.6;color:#5b655c">${escapeHtml(input.body)}</p>
 ${action}
-<p style="margin:24px 0 0;font-size:12px;color:#5b655c">Business Intelligence Technologies Limited</p>
+<p style="margin:24px 0 0;font-size:12px;color:#5b655c">${escapeHtml(branding.institutionName)}${
+    branding.supportEmail
+      ? ` &middot; <a href="mailto:${escapeHtml(branding.supportEmail)}" style="color:#5b655c">${escapeHtml(branding.supportEmail)}</a>`
+      : ""
+  }</p>
 </div></body></html>`;
 }
 

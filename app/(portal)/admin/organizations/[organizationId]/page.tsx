@@ -6,6 +6,9 @@ import { requireRole } from "@/lib/roles";
 import { getOrganization } from "@/lib/organizations";
 import { StatCard } from "@/components/student/stat-card";
 import { ProgressBar } from "@/components/student/progress-bar";
+import { readOrgBranding } from "@/lib/settings";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { updateOrgBrandingAction } from "../../settings/actions";
 import { addMembersAction, bulkEnrolAction, removeMemberAction } from "../actions";
 
 export const metadata: Metadata = { title: "Organisation" };
@@ -30,6 +33,8 @@ export default async function OrganizationPage({
 
   if (!organization) notFound();
 
+  const branding = readOrgBranding(organization.branding);
+
   return (
     <div className="space-y-8">
       <header>
@@ -52,6 +57,58 @@ export default async function OrganizationPage({
         <StatCard label="Enrolments" value={organization.summary.enrolments} />
         <StatCard label="Completions" value={organization.summary.completions} />
       </div>
+
+      <section className="rounded-2xl border border-border bg-surface p-6">
+        <h2 className="font-display text-xl font-semibold">Branding</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Used where this organisation&rsquo;s people see the platform. Left blank, they see
+          CopaServe&rsquo;s own brand.
+        </p>
+
+        <form action={updateOrgBrandingAction} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <input type="hidden" name="organizationId" value={organization.id} />
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-sm font-medium">Logo URL</span>
+            <input
+              name="logoUrl"
+              type="url"
+              defaultValue={branding.logoUrl ?? ""}
+              placeholder="https://…"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Primary colour</span>
+            <div className="flex items-center gap-3">
+              <input
+                name="primaryColor"
+                defaultValue={branding.primaryColor ?? ""}
+                placeholder="#0a510e"
+                pattern="#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})"
+                className="w-40 rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm outline-none transition focus:border-brand"
+              />
+              {branding.primaryColor && (
+                <span
+                  aria-hidden
+                  className="size-9 rounded-lg border border-border"
+                  style={{ backgroundColor: branding.primaryColor }}
+                />
+              )}
+            </div>
+          </label>
+
+          <div className="flex items-end">
+            <SubmitButton
+              pendingLabel="Saving..."
+              className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              Save branding
+            </SubmitButton>
+          </div>
+        </form>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-6">
         <h2 className="font-display text-xl font-semibold">Add members</h2>

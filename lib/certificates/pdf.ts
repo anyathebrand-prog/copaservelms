@@ -20,7 +20,11 @@ export type CertificateFields = {
   studentName: string;
   courseName: string;
   instructorName: string;
+  /** Printed under the signature line; falls back to "Instructor". */
+  instructorTitle?: string | null;
   institutionName: string;
+  /** Absolute URL of the institution mark; falls back to the bundled asset. */
+  logoUrl?: string | null;
   certificateNumber: string;
   credentialId: string;
   issueDate: Date;
@@ -73,7 +77,7 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
   // Institution logo (§11.2). Read from disk rather than fetched: issuance
   // must not depend on the app being reachable over HTTP, and a missing file
   // falls back to the wordmark rather than failing the certificate.
-  const logo = await loadLogo(pdf);
+  const logo = await loadLogo(pdf, fields.logoUrl);
   if (logo) {
     const logoHeight = 34;
     const logoWidth = logoHeight * (logo.width / logo.height);
@@ -125,7 +129,9 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
     start: { x: 90, y: 132 }, end: { x: 300, y: 132 }, thickness: 1, color: MUTED,
   });
   page.drawText(fields.instructorName, { x: 90, y: 140, size: 12, font: serifBold, color: INK });
-  page.drawText("Instructor", { x: 90, y: 116, size: 9, font: sans, color: MUTED });
+  page.drawText(fields.instructorTitle?.trim() || "Instructor", {
+    x: 90, y: 116, size: 9, font: sans, color: MUTED,
+  });
 
   // Credential block
   const details: [string, string][] = [
@@ -154,9 +160,13 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
  * A certificate without a logo is still a valid certificate; one that fails to
  * generate is not. So this never throws.
  */
-async function loadLogo(pdf: PDFDocument) {
+async function loadLogo(pdf: PDFDocument, logoUrl?: string | null) {
   try {
-    const bytes = await readFile(join(process.cwd(), "public/brand/copaserve-logo.png"));
+    // A configured mark is fetched; otherwise the bundled one is read from
+    // disk, so issuance does not depend on the network in the normal case.
+    const bytes = logoUrl
+      ? new Uint8Array(await (await fetch(logoUrl)).arrayBuffer())
+      : await readFile(join(process.cwd(), "public/brand/copaserve-logo.png"));
     const image = await pdf.embedPng(bytes);
     return { image, width: image.width, height: image.height };
   } catch {

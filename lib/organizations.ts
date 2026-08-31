@@ -72,7 +72,7 @@ export async function getOrganization(organizationId: string) {
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: {
-      id: true, name: true, slug: true, contactEmail: true,
+      id: true, name: true, slug: true, contactEmail: true, logoUrl: true, branding: true,
       members: {
         orderBy: { createdAt: "desc" },
         select: {

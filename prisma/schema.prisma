@@ -245,6 +245,7 @@ model User {
   discussionLikes     DiscussionLike[]
   walletChallenges    WalletChallenge[]
   apiKeysCreated      ApiKey[]              @relation("ApiKeyCreator")
+  settingsEdits       PlatformSetting[]     @relation("SettingsEditor")
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -1176,6 +1177,40 @@ model ApiKey {
   @@index([organizationId])
   @@index([revokedAt])
   @@map("api_keys")
+}
+
+/// Platform-wide settings (PRD §13.3).
+///
+/// A single row, identified by a fixed id rather than "whichever row comes
+/// back first" — a settings table that can hold two rows eventually holds two
+/// rows, and then which one applies depends on ordering.
+///
+/// These values were previously environment variables, which meant changing
+/// the institution name on a certificate required a redeploy. They are content,
+/// not configuration, and the people who own them are not the people who deploy.
+model PlatformSetting {
+  id String @id @default("singleton")
+
+  /// Awarding institution as it appears on certificates (§11.2).
+  institutionName String  @default("Business Intelligence Technologies Limited")
+  /// Shown to learners who need help; also the reply-to on notifications.
+  supportEmail    String?
+  /// Absolute URL of the mark used on certificates and emails. Null falls back
+  /// to the bundled brand asset.
+  logoUrl         String?
+  /// Brand accent, as a hex colour. Used where a single colour is needed, such
+  /// as the certificate rule and the email button.
+  primaryColor    String  @default("#0a510e")
+  /// Printed beneath the signature line on certificates.
+  signatoryName   String?
+  signatoryTitle  String?
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?  @db.Uuid
+
+  updatedBy User? @relation("SettingsEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("platform_settings")
 }
 
 model AuditLog {

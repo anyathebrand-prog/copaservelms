@@ -35,7 +35,8 @@
     "verify:discovery": "tsx scripts/verify-discovery.ts",
     "verify:routing": "tsx scripts/verify-routing.ts",
     "verify:wallet": "tsx scripts/verify-wallet.ts",
-    "verify:api-keys": "tsx scripts/verify-api-keys.ts"
+    "verify:api-keys": "tsx scripts/verify-api-keys.ts",
+    "verify:settings": "tsx scripts/verify-settings.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

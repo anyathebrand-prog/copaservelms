@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/certificates", label: "Certificates" },
   { href: "/admin/privacy", label: "Compliance" },
   { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/api-keys", label: "API keys" },
   { href: "/admin/audit", label: "Audit log" },
 ];

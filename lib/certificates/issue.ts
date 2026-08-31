@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verificationBase } from "@/lib/app-url";
+import { getSettings } from "@/lib/settings";
 import { getStorage } from "@/lib/storage";
 import { sendNotification } from "@/lib/notifications";
 import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
@@ -15,6 +16,11 @@ import { renderCertificatePdf } from "./pdf";
  * is worse than not seeing one yet.
  */
 
+/**
+ * Fallback only. The awarding institution is a platform setting (§13.3), so
+ * it can be changed without a redeploy — this is what applies if the settings
+ * row cannot be read.
+ */
 export const INSTITUTION_NAME =
   process.env.NEXT_PUBLIC_INSTITUTION_NAME || "Business Intelligence Technologies Limited";
 
@@ -83,6 +89,7 @@ export async function issueCertificate(
     : null;
 
   const instructorProfile = enrollment.course.instructor.profile;
+  const settings = await getSettings();
 
   let pdfUrl: string;
   let storageKey: string;
@@ -91,11 +98,16 @@ export async function issueCertificate(
     const pdf = await renderCertificatePdf({
       studentName: eligibility.studentName,
       courseName: enrollment.course.title,
+      // A named signatory overrides the instructor when one is configured:
+      // some institutions sign every certificate with the same officer.
       instructorName:
+        settings.signatoryName?.trim() ||
         instructorProfile?.displayName?.trim() ||
         `${instructorProfile?.firstName ?? ""} ${instructorProfile?.lastName ?? ""}`.trim() ||
-        INSTITUTION_NAME,
-      institutionName: INSTITUTION_NAME,
+        settings.institutionName,
+      instructorTitle: settings.signatoryTitle ?? null,
+      institutionName: settings.institutionName,
+      logoUrl: settings.logoUrl,
       certificateNumber,
       credentialId,
       issueDate: issuedAt,
