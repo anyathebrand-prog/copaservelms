@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
@@ -117,12 +118,11 @@ export default async function AssignmentPage({
                     <input type="hidden" name="submissionId" value={submission.id} />
                     <input type="hidden" name="assignmentId" value={assignment.id} />
                     <input type="hidden" name="key" value={file.key} />
-                    <button
-                      type="submit"
+                    <SubmitButton pendingLabel="Saving..."
                       className="rounded-lg px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
                     >
                       Remove
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </li>
@@ -163,16 +163,14 @@ export default async function AssignmentPage({
             </label>
 
             <div className="flex flex-wrap gap-2">
-              <button
-                type="submit"
+              <SubmitButton pendingLabel="Saving..."
                 name="intent"
                 value="draft"
                 className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium transition hover:bg-surface-muted"
               >
                 Save draft
-              </button>
-              <button
-                type="submit"
+              </SubmitButton>
+              <SubmitButton pendingLabel="Saving..."
                 name="intent"
                 value="submit"
                 disabled={pastDue && !assignment.allowResubmission}
@@ -184,7 +182,7 @@ export default async function AssignmentPage({
                 className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
               >
                 {submission?.submittedAt ? "Resubmit" : "Submit"}
-              </button>
+              </SubmitButton>
             </div>
           </form>
         )}

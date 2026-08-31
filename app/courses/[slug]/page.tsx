@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -176,12 +177,11 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                 <form action={enrolAction} className="mt-4">
                   <input type="hidden" name="courseId" value={course.id} />
                   <input type="hidden" name="slug" value={slug} />
-                  <button
-                    type="submit"
+                  <SubmitButton pendingLabel="Enrolling…"
                     className="w-full rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110"
                   >
                     Enrol for free
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : providers.length === 0 ? (
                 // Better an honest message than a button that fails on click.
@@ -203,12 +203,11 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                         aria-label="Discount code"
                         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm uppercase outline-none transition focus:border-brand"
                       />
-                      <button
-                        type="submit"
+                      <SubmitButton pendingLabel="Enrolling…"
                         className="w-full rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110"
                       >
                         Pay with {provider.charAt(0) + provider.slice(1).toLowerCase()}
-                      </button>
+                      </SubmitButton>
                     </form>
                   ))}
                 </div>

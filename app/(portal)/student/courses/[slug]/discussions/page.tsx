@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -67,12 +68,11 @@ export default async function CourseDiscussionsPage({
                 Post as an announcement (pinned, and emailed to everyone enrolled)
               </label>
             )}
-            <button
-              type="submit"
+            <SubmitButton pendingLabel="Posting..."
               className="ml-auto rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
             >
               Post
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </section>

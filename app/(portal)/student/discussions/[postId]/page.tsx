@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
@@ -73,8 +74,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
           <form action={toggleLikeAction}>
             <input type="hidden" name="postId" value={post.id} />
             <input type="hidden" name="threadId" value={post.id} />
-            <button
-              type="submit"
+            <SubmitButton pendingLabel="Posting..."
               className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
                 post.likedByMe
                   ? "border-brand bg-brand-pale text-brand"
@@ -82,7 +82,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
               }`}
             >
               {post.likedByMe ? "Liked" : "Like"} · {post.likeCount}
-            </button>
+            </SubmitButton>
           </form>
 
           {moderator && (
@@ -99,12 +99,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
               <input type="hidden" name="postId" value={post.id} />
               <input type="hidden" name="action" value="delete" />
               <input type="hidden" name="slug" value={post.course.slug} />
-              <button
-                type="submit"
+              <SubmitButton pendingLabel="Posting..."
                 className="rounded-lg px-4 py-2 text-sm font-medium text-danger transition hover:bg-danger/10"
               >
                 Delete thread
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -128,25 +127,23 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
                 <form action={toggleLikeAction}>
                   <input type="hidden" name="commentId" value={comment.id} />
                   <input type="hidden" name="threadId" value={post.id} />
-                  <button
-                    type="submit"
+                  <SubmitButton pendingLabel="Posting..."
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                       comment.likedByMe ? "bg-brand-pale text-brand" : "hover:bg-surface-muted"
                     }`}
                   >
                     {comment.likedByMe ? "Liked" : "Like"} · {comment.likeCount}
-                  </button>
+                  </SubmitButton>
                 </form>
 
                 {(moderator || comment.isOwn) && (
                   <form action={deleteCommentAction}>
                     <input type="hidden" name="commentId" value={comment.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton pendingLabel="Posting..."
                       className="rounded-lg px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
                     >
                       Delete
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>
@@ -176,12 +173,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
                     placeholder="Reply…"
                     className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
                   />
-                  <button
-                    type="submit"
+                  <SubmitButton pendingLabel="Posting..."
                     className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface-muted"
                   >
                     Reply
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
             </li>
@@ -205,12 +201,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ postId:
               placeholder="Add to the discussion"
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
             />
-            <button
-              type="submit"
+            <SubmitButton pendingLabel="Posting..."
               className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
             >
               Post reply
-            </button>
+            </SubmitButton>
           </form>
         )}
       </section>
@@ -231,12 +226,11 @@ function ModerateButton({
     <form action={moderateAction}>
       <input type="hidden" name="postId" value={postId} />
       <input type="hidden" name="action" value={action} />
-      <button
-        type="submit"
+      <SubmitButton pendingLabel="Posting..."
         className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface-muted"
       >
         {label}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

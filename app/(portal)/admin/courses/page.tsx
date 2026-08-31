@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/roles";
 import { getCourseQueue } from "@/lib/admin";
@@ -112,12 +113,11 @@ export default async function AdminCoursesPage({
                         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
                       />
                     </label>
-                    <button
-                      type="submit"
+                    <SubmitButton pendingLabel="Working..."
                       className="rounded-lg border border-danger px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/10"
                     >
                       Reject to draft
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>
@@ -144,8 +144,7 @@ function Decision({
     <form action={reviewCourseAction}>
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="decision" value={decision} />
-      <button
-        type="submit"
+      <SubmitButton pendingLabel="Working..."
         className={
           tone === "primary"
             ? "rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
@@ -153,7 +152,7 @@ function Decision({
         }
       >
         {label}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

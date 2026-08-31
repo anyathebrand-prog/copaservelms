@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/roles";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { createCourseAction } from "../../actions";
 
 export const metadata: Metadata = { title: "New course" };
@@ -75,12 +76,12 @@ export default async function NewCoursePage() {
           approves and publishes it.
         </p>
 
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Creating…"
           className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
         >
           Create draft
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

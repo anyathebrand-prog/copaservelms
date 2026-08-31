@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireUser } from "@/lib/roles";
 import { getLearnerSchedule } from "@/lib/live-classes";
 import { joinLiveClassAction } from "./actions";
@@ -58,12 +59,11 @@ export default async function LiveClassesPage() {
                   {item.joinable ? (
                     <form action={joinLiveClassAction}>
                       <input type="hidden" name="liveClassId" value={item.id} />
-                      <button
-                        type="submit"
+                      <SubmitButton pendingLabel="Joining..."
                         className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
                       >
                         Join session
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : (
                     <p className="text-sm text-muted-foreground">

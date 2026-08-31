@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/roles";
@@ -96,13 +97,12 @@ export default async function AdminCertificatesPage() {
 
                 <form action={issueCertificateAction} className="mt-4">
                   <input type="hidden" name="enrollmentId" value={candidate.enrollmentId} />
-                  <button
-                    type="submit"
+                  <SubmitButton pendingLabel="Working..."
                     disabled={!storageReady}
                     className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
                   >
                     Issue certificate
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -160,12 +160,11 @@ export default async function AdminCertificatesPage() {
                         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
                       />
                     </label>
-                    <button
-                      type="submit"
+                    <SubmitButton pendingLabel="Working..."
                       className="rounded-lg border border-danger px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/10"
                     >
                       Revoke
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </li>
