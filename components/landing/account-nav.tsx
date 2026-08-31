@@ -17,7 +17,7 @@ import { browserSupabaseConfigured, createSupabaseBrowserClient } from "@/lib/su
  * nearby edge. The signed-in link points at /portal, which resolves the right
  * dashboard server-side, so this component never needs to know the roles.
  */
-export function AccountNav() {
+export function AccountNav({ dark = false }: { dark?: boolean } = {}) {
   // null = not yet known. Rendering the signed-out state immediately would
   // show "Sign in" to someone who is signed in, then flip.
   //
@@ -52,12 +52,15 @@ export function AccountNav() {
     return <div className="h-9 w-32" aria-hidden />;
   }
 
+  // On the dark landing header the brand green is barely distinguishable from
+  // the ink behind it, so the button becomes the bright green instead.
+  const button = dark
+    ? "rounded-full bg-brand-bright px-4 py-2 text-sm font-bold text-brand-ink transition hover:brightness-110"
+    : "rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110";
+
   if (signedIn) {
     return (
-      <Link
-        href="/portal"
-        className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-      >
+      <Link href="/portal" className={button}>
         Dashboard
       </Link>
     );
@@ -65,13 +68,15 @@ export function AccountNav() {
 
   return (
     <>
-      <Link href="/login" className="text-sm font-medium transition hover:text-brand">
+      <Link
+        href="/login"
+        className={`text-sm font-medium transition ${
+          dark ? "text-white/70 hover:text-white" : "hover:text-brand"
+        }`}
+      >
         Sign in
       </Link>
-      <Link
-        href="/signup"
-        className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-      >
+      <Link href="/signup" className={button}>
         Start Learning
       </Link>
     </>

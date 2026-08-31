@@ -7,6 +7,11 @@ import { useState, type FormEvent } from "react";
  *
  * Calls the real /api/verify endpoint — the same one the QR codes point at —
  * so the homepage demonstrates the actual trust surface rather than a mock.
+ *
+ * Styled for the dark band it sits on, and deliberately has no container of
+ * its own: a panel around the field would just be a lighter rectangle on the
+ * ink. The field is the invitation, and the result panel appears only once
+ * there is a result to put in it.
  */
 type Result = {
   found: boolean;
@@ -47,8 +52,8 @@ export function VerifyWidget() {
   }
 
   return (
-    <div className="glass-panel rounded-2xl p-6 sm:p-8">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+    <div>
+      <form onSubmit={handleSubmit} className="flex max-w-2xl flex-col gap-3 sm:flex-row">
         <label className="sr-only" htmlFor="credential-id">
           Certificate ID
         </label>
@@ -57,21 +62,21 @@ export function VerifyWidget() {
           value={credentialId}
           onChange={(event) => setCredentialId(event.target.value)}
           placeholder="Enter a certificate ID, e.g. CERT-2026-000123"
-          className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+          className="flex-1 rounded-full border border-white/20 bg-white/5 px-6 py-4 text-sm text-white outline-none backdrop-blur transition placeholder:text-white/35 focus:border-brand-bright/60 focus:bg-white/10"
         />
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+          className="rounded-full bg-brand-bright px-7 py-4 text-sm font-bold text-brand-ink transition hover:brightness-110 disabled:opacity-60"
         >
           {pending ? "Verifying…" : "Verify"}
         </button>
       </form>
 
       {result && (
-        <div role="status" className="mt-6 rounded-xl border border-border bg-surface p-5">
+        <div role="status" className="glass-dark mt-6 max-w-2xl rounded-3xl p-6">
           {!result.found ? (
-            <p className="text-sm font-medium text-danger">
+            <p className="text-sm font-medium text-warning">
               {result.message ?? "No certificate matches this credential ID."}
             </p>
           ) : (
@@ -79,13 +84,15 @@ export function VerifyWidget() {
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    result.valid ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+                    result.valid
+                      ? "bg-brand-bright/15 text-brand-bright"
+                      : "bg-warning/15 text-warning"
                   }`}
                 >
                   {result.valid ? "Valid" : (result.status ?? "Invalid")}
                 </span>
                 {result.mintStatus && result.mintStatus !== "NOT_MINTED" && (
-                  <span className="inline-flex items-center rounded-full bg-brand-pale px-3 py-1 text-xs font-semibold text-brand">
+                  <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
                     {result.mintStatus.replaceAll("_", " ").toLowerCase()}
                   </span>
                 )}
@@ -102,7 +109,7 @@ export function VerifyWidget() {
               </dl>
 
               {result.revocationReason && (
-                <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+                <p className="mt-4 rounded-xl bg-warning/10 px-4 py-2.5 text-sm text-warning">
                   Revoked: {result.revocationReason}
                 </p>
               )}
@@ -118,8 +125,8 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
+      <dt className="text-xs uppercase tracking-wider text-white/40">{label}</dt>
+      <dd className="mt-1 font-medium text-white">{value}</dd>
     </div>
   );
 }

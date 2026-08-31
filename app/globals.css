@@ -9,6 +9,10 @@
   --brand-green: #0a510e;
   --brand-green-bright: #05ff12;
   --brand-green-pale: #dcf8dd;
+  /* Near-black green for dark bands. Not pure black: the page's dark surfaces
+     should still read as part of the brand rather than as an absence. */
+  --brand-ink: #04170a;
+  --brand-ink-soft: #0a2711;
 
   --surface: #ffffff;
   --surface-muted: #f5f7f5;
@@ -26,6 +30,8 @@
   --color-brand: var(--brand-green);
   --color-brand-bright: var(--brand-green-bright);
   --color-brand-pale: var(--brand-green-pale);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-ink-soft: var(--brand-ink-soft);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
@@ -51,6 +57,110 @@ body {
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   box-shadow: 0 8px 30px -12px rgb(10 81 14 / 0.18);
 }
+
+/* --- Landing hero (PRD 7.1) -----------------------------------------------
+   The hero is a dark band in brand ink with the bright green used as light
+   rather than as fill. Everything animated here moves transform or opacity
+   only, so it stays on the compositor and never triggers layout. */
+
+/* Layered radial washes. Two greens at different depths give the flat colour
+   somewhere to fall away to, which is what stops a dark hero reading as a
+   black rectangle. */
+.hero-ink {
+  /* Lit end to end. The earlier version let the base colour show through
+     between the washes, and a near-black hole in the middle of a green field
+     reads as a shadow lying on the page rather than as depth. */
+  background-color: var(--brand-ink-soft);
+  background-image:
+    radial-gradient(ellipse 95% 80% at 12% 0%, color-mix(in srgb, var(--brand-green) 92%, transparent), transparent 68%),
+    radial-gradient(ellipse 70% 65% at 88% 12%, color-mix(in srgb, var(--brand-green-bright) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 110% 75% at 55% 105%, color-mix(in srgb, var(--brand-green) 78%, transparent), transparent 72%);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--brand-green-bright) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--brand-green-bright) 8%, transparent) 1px, transparent 1px);
+  background-size: 72px 72px;
+  /* Faded at the edges so the grid suggests a surface rather than ruling the
+     page into boxes. */
+  mask-image: radial-gradient(ellipse 65% 55% at 50% 35%, #000 30%, transparent 100%);
+}
+
+/* Film grain. A large flat gradient is the thing that most makes a page look
+   synthetic; a little noise over it is most of the difference between "dark
+   background" and "surface". */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* soft-light rather than overlay, and much fainter. Overlay on a dark
+     ground darkens far more than it textures, which was greying the hero. */
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Dark glass, for panels sitting on the ink. The light one in 6.3 disappears
+   on a dark ground, so this is the same idea inverted. */
+.glass-dark {
+  /* Slightly more fill than before: with the drop shadow gone the panel has
+     to separate itself from the ink on its own. */
+  background: color-mix(in srgb, #ffffff 10%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent);
+  /* No black drop shadow. On the ink it pooled into a dark halo around the
+     card instead of reading as depth — the inset highlight and the card's own
+     green glow do that job without dirtying the background. */
+  box-shadow: inset 0 1px 0 0 color-mix(in srgb, #ffffff 12%, transparent);
+}
+
+/* "Mint." — lit rather than coloured. */
+.text-glow {
+  color: var(--brand-green-bright);
+  text-shadow:
+    0 0 22px color-mix(in srgb, var(--brand-green-bright) 45%, transparent),
+    0 0 70px color-mix(in srgb, var(--brand-green-bright) 22%, transparent);
+}
+
+.glow-lime {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand-green-bright) 35%, transparent),
+    0 0 40px -8px color-mix(in srgb, var(--brand-green-bright) 45%, transparent);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(50px, 34px, 0) scale(1.12); }
+}
+
+/* A highlight travelling down the credential card, the way light crosses a
+   physical card as it turns. */
+@keyframes sheen {
+  0% { transform: translateY(-120%) rotate(8deg); opacity: 0; }
+  12% { opacity: 0.55; }
+  40% { opacity: 0; }
+  100% { transform: translateY(320%) rotate(8deg); opacity: 0; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+.animate-float { animation: float 7s ease-in-out infinite; }
+.animate-float-slow { animation: float 9s ease-in-out infinite; }
+.animate-float-delayed { animation: float 8s ease-in-out -3s infinite; }
+.animate-drift { animation: drift 24s ease-in-out infinite; }
+.animate-drift-slow { animation: drift 32s ease-in-out -8s infinite reverse; }
+.animate-sheen { animation: sheen 6s ease-in-out 1.5s infinite; }
+.animate-pulse-ring { animation: pulse-ring 2.6s ease-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *,
