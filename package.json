@@ -34,7 +34,8 @@
     "demo:clear": "tsx scripts/clear-demo.ts",
     "verify:discovery": "tsx scripts/verify-discovery.ts",
     "verify:routing": "tsx scripts/verify-routing.ts",
-    "verify:wallet": "tsx scripts/verify-wallet.ts"
+    "verify:wallet": "tsx scripts/verify-wallet.ts",
+    "verify:api-keys": "tsx scripts/verify-api-keys.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

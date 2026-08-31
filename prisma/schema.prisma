@@ -187,6 +187,16 @@ enum LiveClassStatus {
   CANCELLED
 }
 
+/// What an API key is permitted to do (PRD §13.3).
+enum ApiScope {
+  /// Read certificate verification data for any credential.
+  VERIFY_READ
+  /// Read enrolment and completion data for one organisation.
+  ORG_READ
+  /// Enrol an organisation's members into courses.
+  ORG_WRITE
+}
+
 enum ResourceScope {
   COURSE
   MODULE
@@ -234,6 +244,7 @@ model User {
   couponRedemptions   CouponRedemption[]
   discussionLikes     DiscussionLike[]
   walletChallenges    WalletChallenge[]
+  apiKeysCreated      ApiKey[]              @relation("ApiKeyCreator")
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -317,6 +328,7 @@ model Organization {
   updatedAt    DateTime @updatedAt
 
   members User[]
+  apiKeys ApiKey[]
 
   @@map("organizations")
 }
@@ -1133,6 +1145,37 @@ model DataSubjectRequest {
   @@index([userId])
   @@index([status])
   @@map("data_subject_requests")
+}
+
+/// An API key for machine access (PRD §13.3).
+///
+/// Only a hash is stored. A key that can be read back out of the database is a
+/// second copy of the credential, and the usual reason people discover a leak
+/// late is that it was sitting in a table someone could select from.
+model ApiKey {
+  id             String     @id @default(uuid()) @db.Uuid
+  name           String
+  /// SHA-256 of the key. The key itself is shown once, at creation.
+  hashedKey      String     @unique
+  /// First characters, kept so a key can be recognised in a list without
+  /// being usable.
+  prefix         String
+  scopes         ApiScope[] @default([])
+  /// Set for organisation-scoped keys; null for platform-wide ones.
+  organizationId String?    @db.Uuid
+  createdById    String?    @db.Uuid
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("ApiKeyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([revokedAt])
+  @@map("api_keys")
 }
 
 model AuditLog {
