@@ -63,15 +63,27 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  /*
+   * Only the routes where a session actually matters.
+   *
+   * This used to match everything except static assets, which meant the
+   * landing page, the catalogue and the public verification page all ran
+   * session refresh. Touching auth cookies makes a response personalised, so
+   * every one of them was served `private, no-store` and could never be cached
+   * at the edge — each visitor paid a round trip to the function region for
+   * content identical for everyone.
+   *
+   * Public pages now skip middleware entirely and can be served from a nearby
+   * edge. A signed-in reader browsing them is not refreshed mid-visit, which
+   * costs nothing: the refresh happens as soon as they open a portal route,
+   * and every protected page checks the session again server-side regardless.
+   */
   matcher: [
-    /*
-     * Everything except static assets, images, and /api/verify.
-     *
-     * Verification is excluded deliberately, not for performance: it is the
-     * public QR endpoint (§11.3) and must stay reachable even when Supabase
-     * auth is unconfigured or degraded. Routing it through session refresh
-     * would couple a certificate's public trust surface to the auth stack.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|api/verify|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/student/:path*",
+    "/instructor/:path*",
+    "/admin/:path*",
+    "/portal",
+    "/login",
+    "/signup",
   ],
 };

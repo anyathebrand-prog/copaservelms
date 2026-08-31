@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { LogoLink } from "@/components/layout/logo";
-import { getCurrentUser } from "@/lib/auth";
-import { dashboardPathFor } from "@/lib/roles";
+import { AccountNav } from "@/components/landing/account-nav";
 
-export async function SiteHeader() {
-  // Public page, so an unauthenticated visitor is the normal case, not an error.
-  const user = await getCurrentUser().catch(() => null);
-
+/**
+ * Public site header.
+ *
+ * Deliberately reads nothing about the visitor. The account corner is a client
+ * component, so every page using this header stays statically renderable and
+ * can be cached at the edge — asking the server who the visitor is would make
+ * the whole page dynamic for the sake of one link.
+ */
+export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -22,26 +26,7 @@ export async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {user ? (
-            <Link
-              href={dashboardPathFor(user)}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link href="/login" className="text-sm font-medium transition hover:text-brand">
-                Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-              >
-                Start Learning
-              </Link>
-            </>
-          )}
+          <AccountNav />
         </div>
       </div>
     </header>
