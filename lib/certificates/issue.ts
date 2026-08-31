@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { verificationBase } from "@/lib/app-url";
 import { getSettings } from "@/lib/settings";
+import { emitEvent } from "@/lib/webhooks";
 import { getStorage } from "@/lib/storage";
 import { sendNotification } from "@/lib/notifications";
 import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
@@ -171,6 +172,12 @@ export async function issueCertificate(
     actionUrl: "/student/certificates",
     channels: ["EMAIL"],
     metadata: { certificateNumber, credentialId },
+  }).catch(() => {});
+
+  // Queued, never awaited for delivery: a partner's endpoint being down must
+  // not affect whether a certificate was issued.
+  await emitEvent("CERTIFICATE_ISSUED", {
+    certificateNumber, credentialId, course: enrollment.course.title, verificationUrl,
   }).catch(() => {});
 
   await recordActivity(enrollment.userId, XP.CERTIFICATE_EARNED).catch(() => {});

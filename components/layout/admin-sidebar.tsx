@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/api-keys", label: "API keys" },
+  { href: "/admin/webhooks", label: "Webhooks" },
   { href: "/admin/audit", label: "Audit log" },
 ];
 

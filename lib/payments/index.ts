@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getPaymentDriver, type PaymentDriver, type VerifiedPayment } from "./provider";
 import { quoteCoupon, redeemCoupon, REJECTION_MESSAGES } from "@/lib/coupons";
+import { emitEvent } from "@/lib/webhooks";
 import type { PaymentProvider } from "@/app/generated/prisma/enums";
 
 /**
@@ -290,6 +291,13 @@ export async function finalisePayment(
       },
     });
   });
+
+  await emitEvent("PAYMENT_SUCCEEDED", {
+    reference,
+    amountMinor: verified.amountMinor,
+    currency: verified.currency,
+    provider: payment.provider,
+  }).catch(() => {});
 
   return "ENROLLED";
 }

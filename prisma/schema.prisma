@@ -197,6 +197,21 @@ enum ApiScope {
   ORG_WRITE
 }
 
+/// Events a partner can subscribe to (PRD §13.3).
+enum WebhookEvent {
+  CERTIFICATE_ISSUED
+  CERTIFICATE_REVOKED
+  ENROLMENT_CREATED
+  PAYMENT_SUCCEEDED
+  COURSE_PUBLISHED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
 enum ResourceScope {
   COURSE
   MODULE
@@ -246,6 +261,7 @@ model User {
   walletChallenges    WalletChallenge[]
   apiKeysCreated      ApiKey[]              @relation("ApiKeyCreator")
   settingsEdits       PlatformSetting[]     @relation("SettingsEditor")
+  webhooksCreated     WebhookEndpoint[]     @relation("WebhookCreator")
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -328,8 +344,9 @@ model Organization {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  members User[]
-  apiKeys ApiKey[]
+  members  User[]
+  apiKeys  ApiKey[]
+  webhooks WebhookEndpoint[]
 
   @@map("organizations")
 }
@@ -1211,6 +1228,58 @@ model PlatformSetting {
   updatedBy User? @relation("SettingsEditor", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("platform_settings")
+}
+
+/// A partner endpoint subscribed to events (PRD §13.3).
+model WebhookEndpoint {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  url            String
+  /// Shared secret used to sign each delivery. Held in full because signing
+  /// requires it — unlike an API key, which we only ever need to compare.
+  secret         String
+  events         WebhookEvent[] @default([])
+  /// Set to scope deliveries to one organisation's activity.
+  organizationId String?        @db.Uuid
+  isActive       Boolean        @default(true)
+  createdById    String?        @db.Uuid
+  /// Consecutive failures. An endpoint that keeps failing is disabled rather
+  /// than retried forever.
+  failureCount   Int            @default(0)
+  lastSuccessAt  DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?             @relation("WebhookCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  deliveries   WebhookDelivery[]
+
+  @@index([isActive])
+  @@map("webhook_endpoints")
+}
+
+/// One attempt to deliver one event, kept so a partner can be told what we
+/// sent and when, and so a failure can be retried rather than lost.
+model WebhookDelivery {
+  id           String                @id @default(uuid()) @db.Uuid
+  endpointId   String                @db.Uuid
+  event        WebhookEvent
+  payload      Json
+  status       WebhookDeliveryStatus @default(PENDING)
+  attempts     Int                   @default(0)
+  responseCode Int?
+  error        String?
+  /// Null once delivered or given up on.
+  nextAttemptAt DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([endpointId])
+  @@map("webhook_deliveries")
 }
 
 model AuditLog {
