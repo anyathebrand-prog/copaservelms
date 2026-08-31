@@ -68,7 +68,8 @@ export default async function EditCoursePage({
             <form action={setStatusAction}>
               <input type="hidden" name="courseId" value={course.id} />
               <input type="hidden" name="status" value="SUBMITTED" />
-              <SubmitButton pendingLabel="Saving..."
+              <SubmitButton
+                pendingLabel="Saving..."
                 disabled={lessonCount === 0}
                 title={lessonCount === 0 ? "Add at least one lesson first" : undefined}
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
@@ -82,7 +83,8 @@ export default async function EditCoursePage({
             <form action={setStatusAction}>
               <input type="hidden" name="courseId" value={course.id} />
               <input type="hidden" name="status" value="DRAFT" />
-              <SubmitButton pendingLabel="Saving..."
+              <SubmitButton
+                pendingLabel="Saving..."
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface-muted"
               >
                 Withdraw to draft
@@ -91,6 +93,18 @@ export default async function EditCoursePage({
           )}
         </div>
       </header>
+
+      {/* A disabled button explains itself on hover, which is no explanation at
+          all on a phone — and a new course is empty by definition, so this is
+          the first state every instructor meets. */}
+      {course.status === "DRAFT" && (
+        <p className="rounded-lg bg-surface-muted px-4 py-3 text-sm text-muted-foreground">
+          This course is a draft, so it does not appear on the site yet.{" "}
+          {lessonCount === 0
+            ? "Add a module and at least one lesson below, then submit it for review — an admin publishes it from there."
+            : "Submit it for review when you are ready; an admin publishes it from there."}
+        </p>
+      )}
 
       {course.status === "SUBMITTED" && (
         <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">

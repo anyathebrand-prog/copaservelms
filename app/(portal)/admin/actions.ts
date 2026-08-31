@@ -47,7 +47,10 @@ export async function reviewCourseAction(formData: FormData): Promise<void> {
   revalidatePath("/admin");
   revalidatePath("/admin/courses");
   // The catalogue and landing page both key off published courses.
+  // The public pages are cached at the edge, so a publish that does not
+  // revalidate them leaves the course invisible until the cache expires.
   revalidatePath("/");
+  revalidatePath("/courses");
 }
 
 export async function setUserStatusAction(formData: FormData): Promise<void> {
