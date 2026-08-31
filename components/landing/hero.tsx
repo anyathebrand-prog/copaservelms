@@ -149,12 +149,6 @@ export function Hero({
         <CertificatePreview reduced={reduced} />
       </div>
 
-      {/* The seam into the light page below, so the dark band ends rather than
-          being cut off. */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background"
-      />
     </section>
   );
 }

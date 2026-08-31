@@ -67,11 +67,14 @@ body {
    somewhere to fall away to, which is what stops a dark hero reading as a
    black rectangle. */
 .hero-ink {
-  background-color: var(--brand-ink);
+  /* Lit end to end. The earlier version let the base colour show through
+     between the washes, and a near-black hole in the middle of a green field
+     reads as a shadow lying on the page rather than as depth. */
+  background-color: var(--brand-ink-soft);
   background-image:
-    radial-gradient(ellipse 80% 60% at 15% 0%, color-mix(in srgb, var(--brand-green) 75%, transparent), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 15%, color-mix(in srgb, var(--brand-green-bright) 14%, transparent), transparent 65%),
-    radial-gradient(ellipse 90% 70% at 50% 110%, color-mix(in srgb, var(--brand-green) 45%, transparent), transparent 70%);
+    radial-gradient(ellipse 95% 80% at 12% 0%, color-mix(in srgb, var(--brand-green) 92%, transparent), transparent 68%),
+    radial-gradient(ellipse 70% 65% at 88% 12%, color-mix(in srgb, var(--brand-green-bright) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 110% 75% at 55% 105%, color-mix(in srgb, var(--brand-green) 78%, transparent), transparent 72%);
 }
 
 .hero-grid {
@@ -92,17 +95,21 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.4;
-  mix-blend-mode: overlay;
+  /* soft-light rather than overlay, and much fainter. Overlay on a dark
+     ground darkens far more than it textures, which was greying the hero. */
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
 /* Dark glass, for panels sitting on the ink. The light one in 6.3 disappears
    on a dark ground, so this is the same idea inverted. */
 .glass-dark {
-  background: color-mix(in srgb, #ffffff 7%, transparent);
+  /* Slightly more fill than before: with the drop shadow gone the panel has
+     to separate itself from the ink on its own. */
+  background: color-mix(in srgb, #ffffff 10%, transparent);
   backdrop-filter: blur(16px);
-  border: 1px solid color-mix(in srgb, #ffffff 12%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent);
   /* No black drop shadow. On the ink it pooled into a dark halo around the
      card instead of reading as depth — the inset highlight and the card's own
      green glow do that job without dirtying the background. */
