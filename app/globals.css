@@ -52,6 +52,37 @@ body {
   box-shadow: 0 8px 30px -12px rgb(10 81 14 / 0.18);
 }
 
+/* --- Landing hero motion (PRD §7.1) ---------------------------------------
+   Transform/opacity only, so these run on the compositor and never trigger
+   layout. The reduced-motion block below collapses them along with everything
+   else. */
+
+.hero-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--brand-green) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--brand-green) 7%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* Faded at the edges so the grid suggests a surface rather than ruling the
+     page into boxes. */
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(40px, 30px, 0) scale(1.08); }
+}
+
+.animate-float { animation: float 7s ease-in-out infinite; }
+.animate-float-slow { animation: float 9s ease-in-out infinite; }
+.animate-float-delayed { animation: float 8s ease-in-out -3s infinite; }
+.animate-drift { animation: drift 22s ease-in-out infinite; }
+.animate-drift-slow { animation: drift 30s ease-in-out -8s infinite reverse; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

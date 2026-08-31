@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { ArrowRight, ArrowUpRight, ScanLine, ShieldCheck, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Section } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { Reveal } from "@/components/ui/reveal";
+import { Hero } from "@/components/landing/hero";
 import { VerifyWidget } from "@/components/landing/verify-widget";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -13,6 +15,11 @@ import { SiteFooter } from "@/components/landing/site-footer";
  * Section order follows §7.2 exactly. Featured courses come from the database,
  * so the page is empty-state-correct before any course is published rather
  * than shipping placeholder cards that would later need removing.
+ *
+ * Only the hero is a client component. Everything below it stays server-
+ * rendered and scroll-revealed with IntersectionObserver, which keeps this
+ * page cacheable at the edge — the reason it loads in ~75ms rather than the
+ * ~550ms it took when the header asked the server who the visitor was.
  */
 export const revalidate = 300;
 
@@ -46,46 +53,7 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* 1. Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-brand-pale/60 to-background">
-          <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-            <Reveal>
-              <p className="mb-4 inline-flex items-center rounded-full border border-brand/20 bg-surface px-4 py-1.5 text-sm font-medium text-brand">
-                Powered by Business Intelligence Technologies Limited
-              </p>
-              <h1 className="font-display text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
-                Learn. Get Certified.
-                <br />
-                <span className="text-brand">Verify. Mint.</span>
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-                Nigeria&apos;s next-generation professional learning platform for Data Protection,
-                Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/signup"
-                  className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
-                >
-                  Start Learning
-                </Link>
-                <Link
-                  href="#courses"
-                  className="rounded-lg border border-border bg-surface px-6 py-3 text-sm font-semibold transition hover:bg-surface-muted"
-                >
-                  Explore Courses
-                </Link>
-              </div>
-            </Reveal>
-
-            <Reveal delay={150}>
-              <dl className="mt-16 grid gap-6 sm:grid-cols-3">
-                <Stat label="Courses published" value={certificationCount} />
-                <Stat label="Training domains" value={categories.length} />
-                <Stat label="Certificate verification" value="Instant" />
-              </dl>
-            </Reveal>
-          </div>
-        </section>
+        <Hero courseCount={certificationCount} domainCount={categories.length} />
 
         {/* 2. Featured Courses */}
         <Section
@@ -109,24 +77,37 @@ export default async function HomePage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {featured.map((course, index) => (
                 <Reveal key={course.id} delay={index * 60}>
-                  <Card className="flex h-full flex-col">
-                    {course.category && (
-                      <p className="text-xs font-semibold uppercase tracking-wide text-brand">
-                        {course.category.name}
-                      </p>
-                    )}
-                    <h3 className="mt-2 font-display text-lg font-semibold">{course.title}</h3>
-                    {course.subtitle && (
-                      <p className="mt-2 flex-1 text-sm text-muted-foreground">{course.subtitle}</p>
-                    )}
-                    <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm">
-                      <span className="text-muted-foreground">
-                        {course.level.toLowerCase()}
-                        {course.estimatedMinutes ? ` · ${Math.round(course.estimatedMinutes / 60)}h` : ""}
-                      </span>
-                      <span className="font-semibold">{formatPrice(course.priceMinor, course.currency)}</span>
-                    </div>
-                  </Card>
+                  <Link href={`/courses/${course.slug}`} className="group block h-full">
+                    <Card className="flex h-full flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        {course.category && (
+                          <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+                            {course.category.name}
+                          </p>
+                        )}
+                        <ArrowUpRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                      </div>
+
+                      <h3 className="mt-2 font-display text-lg font-semibold leading-snug">
+                        {course.title}
+                      </h3>
+                      {course.subtitle && (
+                        <p className="mt-2 flex-1 text-sm text-muted-foreground">{course.subtitle}</p>
+                      )}
+
+                      <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
+                        <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium capitalize text-muted-foreground">
+                          {course.level.toLowerCase()}
+                          {course.estimatedMinutes
+                            ? ` · ${Math.round(course.estimatedMinutes / 60)}h`
+                            : ""}
+                        </span>
+                        <span className="font-display font-semibold">
+                          {formatPrice(course.priceMinor, course.currency)}
+                        </span>
+                      </div>
+                    </Card>
+                  </Link>
                 </Reveal>
               ))}
             </div>
@@ -140,18 +121,36 @@ export default async function HomePage() {
           title="Credentials that hold up to scrutiny"
           description="Every track ends in a certificate an employer or regulator can verify in seconds."
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((category, index) => (
-              <Reveal key={category.id} delay={index * 40}>
-                <Card className="h-full">
-                  <h3 className="font-display font-semibold">{category.name}</h3>
-                  {category.description && (
-                    <p className="mt-2 text-sm text-muted-foreground">{category.description}</p>
-                  )}
-                </Card>
-              </Reveal>
-            ))}
-          </div>
+          {categories.length === 0 ? (
+            <Card className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Certification domains appear here as tracks are published.
+              </p>
+            </Card>
+          ) : (
+            /* An indexed list rather than another grid of identical cards: four
+               boxes after the six above reads as one long grid, and the domains
+               are a set to scan, not tiles to compare. */
+            <ul className="divide-y divide-border border-y border-border">
+              {categories.map((category, index) => (
+                <Reveal key={category.id} delay={index * 40}>
+                  <li className="group flex flex-col gap-2 py-6 sm:flex-row sm:items-baseline sm:gap-8">
+                    <span className="font-mono text-sm text-brand/60">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="font-display text-xl font-semibold sm:w-64 sm:shrink-0">
+                      {category.name}
+                    </h3>
+                    {category.description && (
+                      <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
+                        {category.description}
+                      </p>
+                    )}
+                  </li>
+                </Reveal>
+              ))}
+            </ul>
+          )}
         </Section>
 
         {/* 4. Why Learn with BIT */}
@@ -159,30 +158,48 @@ export default async function HomePage() {
           eyebrow="Why BIT Ltd"
           title="Built by a compliance firm, for compliance professionals"
         >
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-10 sm:grid-cols-3">
             {WHY_BIT.map((item, index) => (
               <Reveal key={item.title} delay={index * 60}>
-                <Card className="h-full">
-                  <h3 className="font-display font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
-                </Card>
+                <div className="border-t-2 border-brand pt-5">
+                  <span className="font-display text-4xl font-bold text-brand-pale">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="mt-3 font-display text-lg font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                </div>
               </Reveal>
             ))}
           </div>
         </Section>
 
-        {/* 5. Certificate Verification */}
-        <Section
-          muted
-          id="verify"
-          eyebrow="Verification"
-          title="Check any certificate in seconds"
-          description="Every certificate carries a QR code linking here. No account, no login — enter an ID and see the result."
-        >
-          <Reveal>
-            <VerifyWidget />
-          </Reveal>
-        </Section>
+        {/* 5. Certificate Verification — the differentiator, so it gets the
+            page's one dark band and the visual weight that comes with it. */}
+        <section id="verify" className="relative overflow-hidden bg-brand text-white">
+          <div
+            aria-hidden
+            className="absolute -right-24 -top-24 size-96 rounded-full bg-brand-bright/10 blur-3xl"
+          />
+          <div className="relative mx-auto max-w-6xl px-6 py-24">
+            <Reveal>
+              <p className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-brand-bright">
+                <ScanLine className="size-4" />
+                Verification
+              </p>
+              <h2 className="max-w-2xl font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Check any certificate in seconds
+              </h2>
+              <p className="mt-4 max-w-2xl text-lg text-white/70">
+                Every certificate carries a QR code linking here. No account, no login — enter an ID
+                and see the result, including whether it has been revoked.
+              </p>
+            </Reveal>
+
+            <Reveal delay={120} className="mt-10">
+              <VerifyWidget />
+            </Reveal>
+          </div>
+        </section>
 
         {/* 6. Wallet-ready Certificates */}
         <Section
@@ -194,8 +211,9 @@ export default async function HomePage() {
             {WALLET_POINTS.map((item, index) => (
               <Reveal key={item.title} delay={index * 60}>
                 <Card className="h-full">
-                  <h3 className="font-display font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+                  <item.icon className="size-6 text-brand" />
+                  <h3 className="mt-4 font-display font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
                 </Card>
               </Reveal>
             ))}
@@ -215,21 +233,22 @@ export default async function HomePage() {
         <Section
           eyebrow="For organisations"
           title="Train your team, prove it to your regulator"
-          description="Bulk enrollment, cohort management, and compliance reporting for banks, telcos, and government agencies."
+          description="Bulk enrolment, cohort management, and compliance reporting for banks, telcos, and government agencies."
         >
           <Reveal>
-            <Card className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-              <p className="max-w-xl text-sm text-muted-foreground">
-                Corporate accounts get consolidated reporting on staff completion, verifiable proof of
-                training, and dedicated onboarding.
+            <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-border bg-brand-pale/50 p-8 sm:flex-row sm:items-center sm:p-10">
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                Corporate accounts get departments and cohorts, consolidated reporting on staff
+                completion, verifiable proof of training, and dedicated onboarding.
               </p>
               <a
                 href="mailto:training@bitltd.example"
-                className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
+                className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Talk to us
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </a>
-            </Card>
+            </div>
           </Reveal>
         </Section>
 
@@ -244,17 +263,19 @@ export default async function HomePage() {
 
         {/* 10. FAQ */}
         <Section eyebrow="FAQ" title="Common questions">
-          <div className="space-y-3">
+          <div className="mx-auto max-w-3xl space-y-3">
             {FAQ.map((item, index) => (
               <Reveal key={item.q} delay={index * 40}>
-                <details className="group rounded-xl border border-border bg-surface p-5">
+                <details className="group rounded-2xl border border-border bg-surface p-5 transition hover:border-brand/30">
                   <summary className="cursor-pointer list-none font-medium marker:content-none">
                     <span className="flex items-center justify-between gap-4">
                       {item.q}
-                      <span className="text-brand transition group-open:rotate-45">+</span>
+                      <span className="shrink-0 text-xl leading-none text-brand transition group-open:rotate-45">
+                        +
+                      </span>
                     </span>
                   </summary>
-                  <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
                 </details>
               </Reveal>
             ))}
@@ -265,15 +286,6 @@ export default async function HomePage() {
       {/* 11. Footer */}
       <SiteFooter />
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface/70 p-6 backdrop-blur">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-display text-3xl font-bold text-brand">{value}</dd>
-    </div>
   );
 }
 
@@ -295,20 +307,23 @@ const WHY_BIT = [
   },
   {
     title: "Enterprise-ready",
-    body: "Cohorts, bulk enrollment, and reporting designed for institutional buyers, not retrofitted onto a consumer product.",
+    body: "Cohorts, bulk enrolment, and reporting designed for institutional buyers, not retrofitted onto a consumer product.",
   },
 ];
 
 const WALLET_POINTS = [
   {
+    icon: ShieldCheck,
     title: "No wallet required",
     body: "Enrol, learn, and earn a fully valid certificate without ever touching crypto.",
   },
   {
+    icon: Wallet,
     title: "Mint when you're ready",
     body: "Link a wallet later and mint your credential on Avalanche. Your certificate is equally valid either way.",
   },
   {
+    icon: ScanLine,
     title: "Privacy preserved",
     body: "Only non-sensitive fields go on-chain. Personal data stays off the blockchain entirely.",
   },
