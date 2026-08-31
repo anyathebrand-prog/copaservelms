@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { WebhookEvent } from "@/app/generated/prisma/enums";
@@ -136,10 +137,14 @@ export async function setEndpointActive(id: string, isActive: boolean): Promise<
 }
 
 /**
- * Queue an event for every endpoint subscribed to it.
+ * Queue an event for every endpoint subscribed to it, and attempt delivery
+ * once the response has been sent.
  *
- * Queues rather than sends: the caller is usually in the middle of something
- * that matters more, and a slow endpoint must not slow it down.
+ * Queuing alone is not enough. The scheduled sweep runs daily on this plan, so
+ * a queued-only event could sit for a day before its first attempt — which is
+ * not a webhook, it is a nightly export. after() runs the attempt once the
+ * response is on its way, so the caller is never slowed and delivery is still
+ * prompt. The schedule then exists only to catch what was still failing.
  */
 export async function emitEvent(
   event: WebhookEvent,
@@ -167,6 +172,16 @@ export async function emitEvent(
       nextAttemptAt: new Date(),
     })),
   });
+
+  // Outside a request (a script, a job) there is nothing to run "after", so
+  // the sweep picks these up instead.
+  try {
+    after(async () => {
+      await processPendingDeliveries().catch(() => {});
+    });
+  } catch {
+    // after() throws when called outside a request scope. Not an error here.
+  }
 
   return endpoints.length;
 }
