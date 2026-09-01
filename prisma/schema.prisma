@@ -124,6 +124,13 @@ enum PaymentProvider {
   MANUAL
 }
 
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
 enum DiscountType {
   PERCENT
   FIXED
@@ -274,6 +281,7 @@ model User {
   discussionPosts     DiscussionPost[]
   comments            Comment[]
   lessonProgress      LessonProgress[]
+  invoicesAuthored    Invoice[]             @relation("InvoiceAuthor")
 
   @@index([organizationId])
   @@index([status])
@@ -417,6 +425,7 @@ model Organization {
   apiKeys     ApiKey[]
   webhooks    WebhookEndpoint[]
   departments Department[]
+  invoices    Invoice[]
   cohorts     Cohort[]
 
   @@map("organizations")
@@ -472,20 +481,21 @@ model Course {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  instructor  User                 @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
-  category    Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  template    CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  modules     Module[]
-  enrollments Enrollment[]
-  quizzes     Quiz[]
-  assignments Assignment[]
-  liveClasses LiveClass[]
-  resources   Resource[]
-  payments    Payment[]
-  discussions DiscussionPost[]
-  badges      Badge[]
-  coupons     Coupon[]
-  cohorts     Cohort[]
+  instructor   User                 @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  category     Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  template     CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  modules      Module[]
+  enrollments  Enrollment[]
+  quizzes      Quiz[]
+  assignments  Assignment[]
+  liveClasses  LiveClass[]
+  resources    Resource[]
+  payments     Payment[]
+  discussions  DiscussionPost[]
+  badges       Badge[]
+  coupons      Coupon[]
+  cohorts      Cohort[]
+  invoiceLines InvoiceLine[]
 
   @@index([instructorId])
   @@index([categoryId])
@@ -1300,6 +1310,14 @@ model PlatformSetting {
   signatoryName   String?
   signatoryTitle  String?
 
+  /// Where corporate customers send a transfer. Printed on invoices, so a
+  /// proforma is actionable rather than an amount with no destination.
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankName          String?
+  /// Free text under the bank block: TIN, RC number, VAT note.
+  invoiceFooter     String?
+
   updatedAt   DateTime @updatedAt
   updatedById String?  @db.Uuid
 
@@ -1379,4 +1397,76 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// A proforma invoice raised against a corporate customer (PRD §13.2, §7.2).
+///
+/// Card checkout is for individual learners. An institution buying training for
+/// two hundred staff does not put it on a card — it wants a document to raise a
+/// purchase order against, pays by transfer, and expects the transfer to be
+/// reconciled. That is a different object from a gateway Payment, which is
+/// user-scoped and keyed to a provider transaction, so it is modelled
+/// separately rather than forced into that shape.
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  /// Assigned when the invoice is issued, not when the draft is created, so
+  /// abandoned drafts do not leave gaps in the sequence.
+  invoiceNumber  String?       @unique
+  organizationId String        @db.Uuid
+  status         InvoiceStatus @default(DRAFT)
+  currency       String        @default("NGN")
+
+  /// Copied from the organisation at issue time. A customer renaming itself
+  /// later must not rewrite an invoice it has already been sent.
+  billToName  String
+  billToEmail String?
+
+  /// All in kobo, computed from the lines rather than supplied.
+  subtotalMinor Int @default(0)
+  discountMinor Int @default(0)
+  totalMinor    Int @default(0)
+
+  notes String?
+
+  issuedAt         DateTime?
+  dueAt            DateTime?
+  paidAt           DateTime?
+  /// The bank reference the payer quoted, for reconciliation.
+  paymentReference String?
+
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    User          @relation("InvoiceAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  lines        InvoiceLine[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id              String  @id @default(uuid()) @db.Uuid
+  invoiceId       String  @db.Uuid
+  description     String
+  /// Optional: what was sold, when it is a course on this platform.
+  courseId        String? @db.Uuid
+  quantity        Int     @default(1)
+  /// Kobo per unit.
+  unitAmountMinor Int
+  /// quantity * unitAmountMinor, stored so a later price change cannot
+  /// retroactively alter an issued invoice.
+  amountMinor     Int
+  position        Int     @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  course  Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@map("invoice_lines")
 }

@@ -21,6 +21,12 @@ export type PlatformSettings = {
   primaryColor: string;
   signatoryName: string | null;
   signatoryTitle: string | null;
+  /// Where a corporate customer sends a transfer. Printed on invoices, so a
+  /// proforma is an instruction rather than just an amount.
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankName: string | null;
+  invoiceFooter: string | null;
 };
 
 const FALLBACK: PlatformSettings = {
@@ -30,6 +36,10 @@ const FALLBACK: PlatformSettings = {
   primaryColor: "#0a510e",
   signatoryName: null,
   signatoryTitle: null,
+  bankAccountName: null,
+  bankAccountNumber: null,
+  bankName: null,
+  invoiceFooter: null,
 };
 
 export const getSettings = cache(async function getSettings(): Promise<PlatformSettings> {
@@ -39,6 +49,8 @@ export const getSettings = cache(async function getSettings(): Promise<PlatformS
       select: {
         institutionName: true, supportEmail: true, logoUrl: true,
         primaryColor: true, signatoryName: true, signatoryTitle: true,
+        bankAccountName: true, bankAccountNumber: true, bankName: true,
+        invoiceFooter: true,
       },
     });
 
@@ -88,6 +100,10 @@ export async function updateSettings(
     supportEmail,
     signatoryName: input.signatoryName?.trim() || null,
     signatoryTitle: input.signatoryTitle?.trim() || null,
+    bankAccountName: input.bankAccountName?.trim() || null,
+    bankAccountNumber: input.bankAccountNumber?.trim() || null,
+    bankName: input.bankName?.trim() || null,
+    invoiceFooter: input.invoiceFooter?.trim() || null,
     updatedById: actorId,
   };
 
@@ -99,6 +115,8 @@ export async function updateSettings(
       select: {
         institutionName: true, supportEmail: true, logoUrl: true,
         primaryColor: true, signatoryName: true, signatoryTitle: true,
+        bankAccountName: true, bankAccountNumber: true, bankName: true,
+        invoiceFooter: true,
       },
     });
 

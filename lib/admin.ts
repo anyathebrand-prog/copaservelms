@@ -101,6 +101,7 @@ export async function getAdminOverview() {
     certificatesIssued,
     walletsConnected,
     revenueMinor,
+    invoiceRevenue,
   ] = await Promise.all([
     prisma.user.count({ where: { roles: { some: { role: { name: "STUDENT" } } }, deletedAt: null } }),
     prisma.user.count({ where: { roles: { some: { role: { name: "INSTRUCTOR" } } }, deletedAt: null } }),
@@ -110,6 +111,10 @@ export async function getAdminOverview() {
     prisma.certificate.count({ where: { status: "ISSUED" } }),
     prisma.wallet.count({ where: { disconnectedAt: null } }),
     prisma.payment.aggregate({ where: { status: "SUCCESSFUL" }, _sum: { amountMinor: true } }),
+    // Corporate customers pay by transfer against an invoice, never through a
+    // gateway, so revenue that ignored invoices would under-report the segment
+    // the platform was built to sell to.
+    prisma.invoice.aggregate({ where: { status: "PAID" }, _sum: { totalMinor: true } }),
   ]);
 
   return {
@@ -120,7 +125,8 @@ export async function getAdminOverview() {
     pendingUsers,
     certificatesIssued,
     walletsConnected,
-    revenueMinor: revenueMinor._sum.amountMinor ?? 0,
+    revenueMinor: (revenueMinor._sum.amountMinor ?? 0) + (invoiceRevenue._sum.totalMinor ?? 0),
+    invoiceRevenueMinor: invoiceRevenue._sum.totalMinor ?? 0,
   };
 }
 

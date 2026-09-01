@@ -13,6 +13,7 @@ import {
   KeyRound,
   LayoutDashboard,
   PenSquare,
+  ReceiptText,
   ScrollText,
   Search,
   Settings,
@@ -123,6 +124,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/payments", label: "Payments", icon: CreditCard, primary: true },
       { href: "/admin/coupons", label: "Coupons", icon: Ticket },
+      { href: "/admin/invoices", label: "Invoices", icon: ReceiptText },
     ],
   },
   {
