@@ -185,7 +185,7 @@ export async function exportUserData(userId: string) {
       }),
       prisma.wallet.findMany({
         where: { userId },
-        select: { address: true, provider: true, chainId: true, connectedAt: true },
+        select: { address: true, provider: true, chainKey: true, connectedAt: true },
       }),
       prisma.payment.findMany({
         where: { userId },

@@ -39,11 +39,17 @@
     "verify:settings": "tsx scripts/verify-settings.ts",
     "verify:webhooks": "tsx scripts/verify-webhooks.ts",
     "verify:cohorts": "tsx scripts/verify-cohorts.ts",
+    "verify:invoices": "tsx --env-file=.env scripts/verify-invoices.ts",
+    "verify:phone-auth": "tsx scripts/verify-phone-auth.ts",
+    "verify:two-factor": "tsx --env-file=.env scripts/verify-two-factor.ts",
+    "verify:waitlist": "tsx --env-file=.env scripts/verify-waitlist.ts",
     "smoke:portal": "tsx --env-file=.env scripts/smoke-portal.ts"
   },
   "dependencies": {
+    "@noble/curves": "^2.4.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@scure/base": "^2.4.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "exceljs": "^4.4.0",

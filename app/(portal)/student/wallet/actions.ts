@@ -24,7 +24,8 @@ async function requireUser() {
 }
 
 const MESSAGES: Record<WalletError, string> = {
-  INVALID_ADDRESS: "That does not look like a wallet address.",
+  INVALID_ADDRESS: "That does not look like a wallet address for this chain.",
+  UNKNOWN_CHAIN: "That network is not one CopaServe supports.",
   CHALLENGE_NOT_FOUND: "That verification request has expired. Please try connecting again.",
   CHALLENGE_EXPIRED: "That verification request has expired. Please try connecting again.",
   CHALLENGE_USED: "That verification request has already been used. Please try connecting again.",
@@ -35,10 +36,11 @@ const MESSAGES: Record<WalletError, string> = {
 
 /** Step one: ask the server for something to sign. */
 export async function requestChallengeAction(
+  chainKey: string,
   address: string,
 ): Promise<{ ok: true; nonce: string; message: string } | { ok: false; error: string }> {
   const user = await requireUser();
-  const result = await createChallenge(user.id, address);
+  const result = await createChallenge(user.id, chainKey, address);
 
   if (!result.ok) return { ok: false, error: MESSAGES[result.error] };
   return { ok: true, nonce: result.data.nonce, message: result.data.message };
@@ -49,7 +51,6 @@ export async function linkWalletAction(input: {
   nonce: string;
   signature: string;
   provider: WalletProvider;
-  chainId: number;
 }): Promise<{ ok: true; address: string } | { ok: false; error: string }> {
   const user = await requireUser();
   const result = await linkWallet(user.id, input);

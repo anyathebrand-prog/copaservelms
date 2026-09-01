@@ -149,8 +149,40 @@ Current base: `https://copaservelms.vercel.app/verify`.
 
 ### Also outstanding
 
-- **Google and Microsoft sign-in** need enabling in Supabase → Authentication →
-  Providers. Email/password and magic link already work.
+- **Google sign-in needs the domain.** The redirect goes to Supabase, not to
+  us, so it works immediately for named test users. Publishing the consent
+  screen so the public can sign in requires a homepage and privacy policy on a
+  domain verified in Google Search Console, and `vercel.app` cannot be verified
+  because it is a public suffix.
+
+  The sign-in page asks Supabase which providers are enabled and renders only
+  those, so nothing is offered that would dead-end. Enabling Google surfaces its
+  button within five minutes, without a deploy.
+
+- **Phone sign-in is built but needs three things switched on.** It signs
+  someone into the account that already holds their number — it is a second
+  credential, not a second account, because a learner still needs an email to
+  receive their certificate.
+
+  1. Supabase → Authentication → Providers → Phone: enable.
+  2. Supabase → Authentication → Hooks → Send SMS: point at
+     `https://<deployment>/api/auth/sms-hook` and copy the generated secret
+     into `SUPABASE_SMS_HOOK_SECRET`. Supabase generates the code; Termii
+     delivers it, so no Twilio account is needed.
+  3. Termii: top up, and get a sender ID approved — that needs company
+     documents and takes days.
+
+  The button stays hidden until Supabase reports phone as enabled, so nothing
+  is offered that would dead-end. Numbers are normalised to E.164 by
+  `lib/phone.ts`, which is what stops one person holding several accounts.
+
+- **Microsoft was removed.** Consumer Outlook accounts are not the identity
+  these learners arrive with. This is a separate decision from enterprise SSO:
+  a bank requiring its staff to authenticate against its own Entra ID tenant is
+  SAML, which Supabase supports on paid plans, and nothing here forecloses it.
+
+- Email/password and magic link already work — subject to the email note above,
+  which is what makes magic link unusable in practice today.
 - **Nobody has used the app in a browser.** Every check so far is server-side.
 
 ## Roadmap

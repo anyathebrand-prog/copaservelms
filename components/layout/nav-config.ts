@@ -12,7 +12,9 @@ import {
   FileText,
   KeyRound,
   LayoutDashboard,
+  MailPlus,
   PenSquare,
+  ReceiptText,
   ScrollText,
   Search,
   Settings,
@@ -116,6 +118,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/users", label: "Users", icon: Users, primary: true },
       { href: "/admin/organizations", label: "Organisations", icon: Building2 },
       { href: "/admin/cohorts", label: "Cohorts", icon: UsersRound },
+      { href: "/admin/waitlist", label: "Waitlist", icon: MailPlus },
     ],
   },
   {
@@ -123,6 +126,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/payments", label: "Payments", icon: CreditCard, primary: true },
       { href: "/admin/coupons", label: "Coupons", icon: Ticket },
+      { href: "/admin/invoices", label: "Invoices", icon: ReceiptText },
     ],
   },
   {

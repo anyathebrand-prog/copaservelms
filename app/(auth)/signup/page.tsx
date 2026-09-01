@@ -1,17 +1,25 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth/auth-form";
+import { getAuthMethods } from "@/lib/auth-providers";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default function SignupPage() {
+export default async function SignupPage() {
   const configured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 
+  const methods = await getAuthMethods();
+
   return (
     <Suspense>
-      <AuthForm mode="signup" configured={configured} />
+      <AuthForm
+        mode="signup"
+        configured={configured}
+        providers={methods.providers}
+        phoneEnabled={methods.phone}
+      />
     </Suspense>
   );
 }
