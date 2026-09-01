@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useActionState, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
-import { joinWaitlistAction } from "@/app/waitlist/actions";
+import { joinWaitlistAction, type WaitlistState } from "@/app/waitlist/actions";
 
 /**
  * Join the waitlist.
@@ -26,32 +26,19 @@ const INTERESTS = [
 ];
 
 export function WaitlistForm({ consentText, source }: { consentText: string; source?: string }) {
-  const [status, setStatus] = useState<"idle" | "working" | "done">("idle");
-  const [alreadyOn, setAlreadyOn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, formAction, pending] = useActionState<WaitlistState, FormData>(
+    joinWaitlistAction,
+    { status: "idle" },
+  );
+
+  // Only the checkbox needs local state, to keep the button disabled until it
+  // is ticked. Everything else is plain form data, so the form submits without
+  // JavaScript and this component only improves it.
   const [consented, setConsented] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setStatus("working");
-
-    const formData = new FormData(event.currentTarget);
-
-    try {
-      const result = await joinWaitlistAction(formData);
-      if (!result.ok) {
-        setError(result.error);
-        setStatus("idle");
-        return;
-      }
-      setAlreadyOn(result.alreadyOn);
-      setStatus("done");
-    } catch {
-      setError("Something went wrong. Please try again.");
-      setStatus("idle");
-    }
-  }
+  const status = state.status === "joined" ? "done" : "idle";
+  const alreadyOn = state.status === "joined" && state.alreadyOn;
+  const error = state.status === "error" ? state.message : null;
 
   if (status === "done") {
     return (
@@ -70,7 +57,7 @@ export function WaitlistForm({ consentText, source }: { consentText: string; sou
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="source" value={source ?? "landing"} />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -136,6 +123,8 @@ export function WaitlistForm({ consentText, source }: { consentText: string; sou
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
         <input
           type="checkbox"
+          name="consent"
+          value="yes"
           required
           checked={consented}
           onChange={(event) => setConsented(event.target.checked)}
@@ -152,10 +141,10 @@ export function WaitlistForm({ consentText, source }: { consentText: string; sou
 
       <button
         type="submit"
-        disabled={status === "working" || !consented}
+        disabled={pending || !consented}
         className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-bright px-7 py-4 text-sm font-bold text-brand-ink shadow-[0_0_45px_-8px_rgba(5,255,18,0.65)] transition hover:shadow-[0_0_60px_-6px_rgba(5,255,18,0.9)] disabled:opacity-50 disabled:shadow-none sm:w-auto"
       >
-        {status === "working" ? "Adding you..." : "Join the waitlist"}
+        {pending ? "Adding you..." : "Join the waitlist"}
         <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
       </button>
     </form>
