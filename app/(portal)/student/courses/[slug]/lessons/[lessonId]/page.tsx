@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
 import { getCourseForPlayer } from "@/lib/student";
 import { ProgressBar } from "@/components/student/progress-bar";
+import { CourseComplete } from "@/components/student/course-complete";
 import { completeLessonAction } from "../../actions";
 
 export const metadata: Metadata = { title: "Lesson" };
@@ -36,6 +37,11 @@ export default async function LessonPage({
   const previous = index > 0 ? lessons[index - 1] : null;
   const next = index < lessons.length - 1 ? lessons[index + 1] : null;
   const courseQuizzes = data.course.quizzes.filter((quiz) => quiz.lessonId === lesson.id);
+
+  // The course is finished when every lesson is, which is the moment the
+  // player has to stop being a list of lessons and say what happens next.
+  const courseFinished = lessons.every((item) => item.completed);
+  const remainingQuizzes = data.course.quizzes.filter((quiz) => quiz.lessonId === null);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
@@ -98,6 +104,15 @@ export default async function LessonPage({
           </section>
         )}
 
+        {courseFinished && (
+          <CourseComplete
+            slug={slug}
+            courseTitle={data.course.title}
+            quizzes={remainingQuizzes}
+            certificate={data.certificate}
+          />
+        )}
+
         <footer className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
           <form action={completeLessonAction}>
             <input type="hidden" name="lessonId" value={lesson.id} />
@@ -120,12 +135,21 @@ export default async function LessonPage({
                 ← Previous
               </Link>
             )}
-            {next && (
+            {next ? (
               <Link
                 href={`/student/courses/${slug}/lessons/${next.id}`}
                 className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-surface-muted"
               >
                 Next →
+              </Link>
+            ) : (
+              // Last lesson: the only thing left is the course itself, so
+              // offer that rather than nothing.
+              <Link
+                href={`/student/courses/${slug}`}
+                className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-surface-muted"
+              >
+                Finish →
               </Link>
             )}
           </div>

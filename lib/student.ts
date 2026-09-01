@@ -205,6 +205,7 @@ export async function getCourseForPlayer(userId: string, slug: string) {
         },
       },
       lessonProgress: { select: { lessonId: true, completed: true, lastPositionSeconds: true } },
+      certificate: { select: { id: true, credentialId: true, status: true } },
     },
   });
 
@@ -216,6 +217,9 @@ export async function getCourseForPlayer(userId: string, slug: string) {
     enrollmentId: enrollment.id,
     status: enrollment.status,
     progressPercent: enrollment.progressPercent,
+    // Present once issued, so the end of the last lesson can link to it rather
+    // than leaving the learner to guess whether anything happened.
+    certificate: enrollment.certificate,
     course: enrollment.course,
     modules: enrollment.course.modules.map((module) => ({
       ...module,
@@ -346,7 +350,7 @@ export async function markLessonComplete(userId: string, lessonId: string) {
     data: {
       progressPercent,
       // Completion flips the enrollment, which is what certificate eligibility
-      // keys off (§11.1). Issuance itself stays a separate, admin-gated step.
+      // keys off (§11.1).
       status: finished ? "COMPLETED" : undefined,
       completedAt: finished ? new Date() : undefined,
     },
@@ -363,7 +367,20 @@ export async function markLessonComplete(userId: string, lessonId: string) {
   // missed by whichever route completed the course.
   const badges = await evaluateBadges(userId);
 
-  return { ok: true as const, progressPercent, finished, badges };
+  // Issue the certificate the moment it is earned, where the course does not
+  // ask for a human to approve it.
+  //
+  // §11.1 says a certificate is issued when every applicable condition is met.
+  // Until now nothing acted on that: eligibility became true and then waited
+  // for an administrator to notice, so a learner who finished a course with no
+  // approval requirement met every condition and received nothing. That is not
+  // a decision anybody made — it was a missing link.
+  //
+  // Courses that set requiresAdminApproval are untouched: awaitingApproval
+  // keeps them queued for a person, which is the point of the setting.
+  const certificate = finished ? await autoIssueCertificate(enrollment.id) : null;
+
+  return { ok: true as const, progressPercent, finished, badges, certificate };
 }
 
 function formatName(
@@ -371,4 +388,38 @@ function formatName(
 ): string {
   if (!profile) return "Unknown";
   return profile.displayName?.trim() || `${profile.firstName} ${profile.lastName}`.trim();
+}
+
+/**
+ * Issue a certificate for a just-completed enrolment, if it is due.
+ *
+ * Never throws. A certificate that fails to render must not undo the lesson
+ * the learner just completed — their progress is real either way, and an
+ * administrator can still issue by hand from the certificates page.
+ *
+ * Imported lazily because the issuance path pulls in PDF rendering, storage and
+ * webhooks, none of which belong in the module graph of every page that reads
+ * a learner's progress.
+ */
+async function autoIssueCertificate(
+  enrollmentId: string,
+): Promise<{ certificateId: string; credentialId: string } | null> {
+  try {
+    const { evaluateEligibility } = await import("@/lib/certificates/eligibility");
+    const eligibility = await evaluateEligibility(enrollmentId);
+
+    if (!eligibility || eligibility.alreadyIssued) return null;
+    // awaitingApproval means the only thing missing is a human, and that human
+    // is the whole reason the course asked for approval.
+    if (!eligibility.eligible || eligibility.awaitingApproval) return null;
+
+    const { issueCertificate } = await import("@/lib/certificates/issue");
+    const result = await issueCertificate(enrollmentId, {});
+
+    if (!result.ok) return null;
+    return { certificateId: result.certificateId, credentialId: result.credentialId };
+  } catch (cause) {
+    console.error("[certificates] automatic issuance failed", cause);
+    return null;
+  }
 }
