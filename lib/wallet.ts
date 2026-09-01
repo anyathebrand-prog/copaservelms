@@ -1,6 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { getAddress, isAddress, verifyMessage } from "viem";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { base58 } from "@scure/base";
 import { prisma } from "@/lib/prisma";
+import { chainName, getChain, type Chain } from "@/lib/chains";
 import type { WalletProvider } from "@/app/generated/prisma/enums";
 
 /**
@@ -14,10 +17,19 @@ import type { WalletProvider } from "@/app/generated/prisma/enums";
  * signed a challenge we issued. Storing an address someone typed proves
  * nothing — anyone can claim any address, and a certificate later minted to an
  * unverified address would be minted to a stranger.
+ *
+ * Two chain families are supported, and they agree on nothing except that
+ * rule. EVM addresses are 20 hex bytes with a checksum in their capitalisation
+ * and sign with secp256k1 under EIP-191; Solana addresses are 32-byte ed25519
+ * public keys in base58, where capitalisation is the value rather than a
+ * checksum. So normalisation and verification both branch on the family, and
+ * the chain is bound into the challenge — otherwise a caller could pick which
+ * verifier judges their signature.
  */
 
 export type WalletError =
   | "INVALID_ADDRESS"
+  | "UNKNOWN_CHAIN"
   | "CHALLENGE_NOT_FOUND"
   | "CHALLENGE_EXPIRED"
   | "CHALLENGE_USED"
@@ -27,15 +39,59 @@ export type WalletError =
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: WalletError };
 
-/** Chains offered, Avalanche first per §6.1. */
-export const CHAINS: { id: number; name: string; explorer: string; testnet: boolean }[] = [
-  { id: 43114, name: "Avalanche C-Chain", explorer: "https://snowtrace.io", testnet: false },
-  { id: 43113, name: "Avalanche Fuji (testnet)", explorer: "https://testnet.snowtrace.io", testnet: true },
-  { id: 137, name: "Polygon", explorer: "https://polygonscan.com", testnet: false },
-];
+/**
+ * Canonical form of an address, or null if it is not one for this chain.
+ *
+ * EVM addresses are checksummed so the same wallet cannot be linked twice
+ * under different capitalisation. Solana addresses are left exactly as given:
+ * base58 is case-sensitive, so "correcting" the case would name a different
+ * account.
+ */
+export function normalizeAddress(chain: Chain, raw: string): string | null {
+  const trimmed = raw.trim();
 
-export function chainName(chainId: number): string {
-  return CHAINS.find((chain) => chain.id === chainId)?.name ?? `Chain ${chainId}`;
+  if (chain.family === "EVM") {
+    return isAddress(trimmed) ? getAddress(trimmed) : null;
+  }
+
+  try {
+    // A Solana address is a 32-byte public key. Anything that decodes to a
+    // different length is not one, however valid the base58.
+    return base58.decode(trimmed).length === 32 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Check a signature the way the chain's own wallets produce it. */
+export async function verifySignature(
+  chain: Chain,
+  address: string,
+  message: string,
+  signature: string,
+): Promise<boolean> {
+  if (chain.family === "EVM") {
+    return verifyMessage({
+      address: address as `0x${string}`,
+      message,
+      signature: signature as `0x${string}`,
+    }).catch(() => false);
+  }
+
+  try {
+    // Solana wallets sign the raw UTF-8 bytes and hand back 64 bytes, which
+    // Phantom, Solflare and Backpack all return base58-encoded.
+    const signatureBytes = base58.decode(signature.trim());
+    if (signatureBytes.length !== 64) return false;
+
+    return ed25519.verify(
+      signatureBytes,
+      new TextEncoder().encode(message),
+      base58.decode(address),
+    );
+  } catch {
+    return false;
+  }
 }
 
 const CHALLENGE_TTL_MINUTES = 10;
@@ -48,12 +104,15 @@ const CHALLENGE_TTL_MINUTES = 10;
  */
 export async function createChallenge(
   userId: string,
+  chainKey: string,
   rawAddress: string,
 ): Promise<Result<{ nonce: string; message: string }>> {
-  if (!isAddress(rawAddress)) return { ok: false, error: "INVALID_ADDRESS" };
+  const chain = getChain(chainKey);
+  if (!chain) return { ok: false, error: "UNKNOWN_CHAIN" };
 
-  // Checksum form, so the same wallet is always stored identically.
-  const address = getAddress(rawAddress);
+  const address = normalizeAddress(chain, rawAddress);
+  if (!address) return { ok: false, error: "INVALID_ADDRESS" };
+
   const nonce = randomBytes(16).toString("hex");
 
   await prisma.walletChallenge.create({
@@ -61,11 +120,12 @@ export async function createChallenge(
       userId,
       nonce,
       address,
+      chainKey: chain.key,
       expiresAt: new Date(Date.now() + CHALLENGE_TTL_MINUTES * 60_000),
     },
   });
 
-  return { ok: true, data: { nonce, message: buildMessage(address, nonce) } };
+  return { ok: true, data: { nonce, message: buildMessage(chain, address, nonce) } };
 }
 
 /**
@@ -76,7 +136,7 @@ export async function createChallenge(
  * rights. The address and nonce are included so a signature cannot be reused
  * for a different address or a second attempt.
  */
-export function buildMessage(address: string, nonce: string): string {
+export function buildMessage(chain: Chain, address: string, nonce: string): string {
   return [
     "CopaServe wallet verification",
     "",
@@ -84,6 +144,7 @@ export function buildMessage(address: string, nonce: string): string {
     "This proves you control the address. It authorises no transaction and",
     "cannot move funds.",
     "",
+    `Chain: ${chain.name}`,
     `Address: ${address}`,
     `Nonce: ${nonce}`,
   ].join("\n");
@@ -97,11 +158,11 @@ export function buildMessage(address: string, nonce: string): string {
  */
 export async function linkWallet(
   userId: string,
-  input: { nonce: string; signature: string; provider: WalletProvider; chainId: number },
-): Promise<Result<{ walletId: string; address: string }>> {
+  input: { nonce: string; signature: string; provider: WalletProvider },
+): Promise<Result<{ walletId: string; address: string; chainKey: string }>> {
   const challenge = await prisma.walletChallenge.findUnique({
     where: { nonce: input.nonce },
-    select: { id: true, userId: true, address: true, expiresAt: true, usedAt: true },
+    select: { id: true, userId: true, address: true, chainKey: true, expiresAt: true, usedAt: true },
   });
 
   // Someone else's challenge is treated as no challenge, rather than
@@ -117,16 +178,22 @@ export async function linkWallet(
     data: { usedAt: new Date() },
   });
 
-  const valid = await verifyMessage({
-    address: challenge.address as `0x${string}`,
-    message: buildMessage(challenge.address, input.nonce),
-    signature: input.signature as `0x${string}`,
-  }).catch(() => false);
+  // The chain was fixed when the challenge was issued, so a caller cannot
+  // choose which family judges their signature.
+  const chain = getChain(challenge.chainKey);
+  if (!chain) return { ok: false, error: "UNKNOWN_CHAIN" };
+
+  const valid = await verifySignature(
+    chain,
+    challenge.address,
+    buildMessage(chain, challenge.address, input.nonce),
+    input.signature,
+  );
 
   if (!valid) return { ok: false, error: "SIGNATURE_INVALID" };
 
   const existing = await prisma.wallet.findFirst({
-    where: { userId, address: challenge.address, chainId: input.chainId },
+    where: { userId, address: challenge.address, chainKey: chain.key },
     select: { id: true, disconnectedAt: true },
   });
 
@@ -140,20 +207,23 @@ export async function linkWallet(
     ? await prisma.wallet.update({
         where: { id: existing.id },
         data: { disconnectedAt: null, connectedAt: new Date(), provider: input.provider, isPrimary: isFirst },
-        select: { id: true, address: true },
+        select: { id: true, address: true, chainKey: true },
       })
     : await prisma.wallet.create({
         data: {
           userId,
           address: challenge.address,
           provider: input.provider,
-          chainId: input.chainId,
+          chainKey: chain.key,
           isPrimary: isFirst,
         },
-        select: { id: true, address: true },
+        select: { id: true, address: true, chainKey: true },
       });
 
-  return { ok: true, data: { walletId: wallet.id, address: wallet.address } };
+  return {
+    ok: true,
+    data: { walletId: wallet.id, address: wallet.address, chainKey: wallet.chainKey },
+  };
 }
 
 export async function disconnectWallet(userId: string, walletId: string): Promise<Result<null>> {
@@ -205,7 +275,7 @@ export async function getWalletOverview(userId: string) {
     prisma.wallet.findMany({
       where: { userId, disconnectedAt: null },
       orderBy: [{ isPrimary: "desc" }, { connectedAt: "asc" }],
-      select: { id: true, address: true, provider: true, chainId: true, isPrimary: true, connectedAt: true },
+      select: { id: true, address: true, provider: true, chainKey: true, isPrimary: true, connectedAt: true },
     }),
     prisma.certificate.findMany({
       where: { userId, status: "ISSUED" },
@@ -219,14 +289,14 @@ export async function getWalletOverview(userId: string) {
       where: { certificate: { userId } },
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, status: true, transactionHash: true, chainId: true, createdAt: true,
+        id: true, status: true, transactionHash: true, chainKey: true, createdAt: true,
         certificate: { select: { certificateNumber: true } },
       },
     }),
   ]);
 
   return {
-    wallets: wallets.map((wallet) => ({ ...wallet, chainName: chainName(wallet.chainId) })),
+    wallets: wallets.map((wallet) => ({ ...wallet, chainName: chainName(wallet.chainKey) })),
     certificates,
     mints,
     eligible: certificates.filter((c) => c.mintStatus === "MINT_ELIGIBLE").length,

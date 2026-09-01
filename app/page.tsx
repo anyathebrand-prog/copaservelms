@@ -323,7 +323,7 @@ const WALLET_POINTS = [
   {
     icon: Wallet,
     title: "Mint when you're ready",
-    body: "Link a wallet later and mint your credential on Avalanche. Your certificate is equally valid either way.",
+    body: "Link a wallet later and mint your credential on Base, Polygon or Solana. Your certificate is equally valid either way.",
   },
   {
     icon: ScanLine,

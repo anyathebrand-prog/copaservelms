@@ -113,7 +113,9 @@ enum WalletProvider {
   METAMASK
   COINBASE
   RAINBOW
-  AVALANCHE_CORE
+  PHANTOM
+  SOLFLARE
+  BACKPACK
 }
 
 enum PaymentProvider {
@@ -308,28 +310,28 @@ model UserRole {
 }
 
 model Profile {
-  id               String   @id @default(uuid()) @db.Uuid
-  userId           String   @unique @db.Uuid
-  firstName        String
-  lastName         String
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @unique @db.Uuid
+  firstName          String
+  lastName           String
   /// Rendered onto certificates; may differ from firstName + lastName.
-  displayName      String?
-  avatarUrl        String?
-  bio              String?
-  profession       String?
-  organizationName String?
-  country          String?
-  phone            String?
-  emergencyContact String?
+  displayName        String?
+  avatarUrl          String?
+  bio                String?
+  profession         String?
+  organizationName   String?
+  country            String?
+  phone              String?
+  emergencyContact   String?
   /// Gamification (PRD §14): XP, streaks, cumulative learning time.
-  xpPoints         Int      @default(0)
-  currentStreak    Int      @default(0)
-  longestStreak    Int      @default(0)
-  learningMinutes  Int      @default(0)
+  xpPoints           Int      @default(0)
+  currentStreak      Int      @default(0)
+  longestStreak      Int      @default(0)
+  learningMinutes    Int      @default(0)
   /// Per-channel communication preferences, keyed by NotificationChannel.
-  communicationPrefs Json   @default("{}")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  communicationPrefs Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -523,9 +525,9 @@ model Lesson {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  prerequisites LessonPrereq[] @relation("LessonDependent")
-  requiredBy    LessonPrereq[] @relation("LessonPrerequisite")
+  module        Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  prerequisites LessonPrereq[]   @relation("LessonDependent")
+  requiredBy    LessonPrereq[]   @relation("LessonPrerequisite")
   progress      LessonProgress[]
   quizzes       Quiz[]
   resources     Resource[]
@@ -635,20 +637,20 @@ model LessonProgress {
 // ---------------------------------------------------------------------------
 
 model Quiz {
-  id               String   @id @default(uuid()) @db.Uuid
-  courseId         String   @db.Uuid
-  lessonId         String?  @db.Uuid
-  title            String
-  description      String?
-  timeLimitMinutes Int?
-  passingScore     Int      @default(70)
-  maxAttempts      Int?
-  shuffleQuestions Boolean  @default(false)
-  showAnswersAfter Boolean  @default(true)
+  id                      String   @id @default(uuid()) @db.Uuid
+  courseId                String   @db.Uuid
+  lessonId                String?  @db.Uuid
+  title                   String
+  description             String?
+  timeLimitMinutes        Int?
+  passingScore            Int      @default(70)
+  maxAttempts             Int?
+  shuffleQuestions        Boolean  @default(false)
+  showAnswersAfter        Boolean  @default(true)
   /// Counts toward the course's certificate eligibility check (PRD §11.1).
-  countsTowardCertificate Boolean @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  countsTowardCertificate Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson    Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
@@ -726,21 +728,21 @@ model QuizAnswer {
 }
 
 model Assignment {
-  id               String    @id @default(uuid()) @db.Uuid
-  courseId         String    @db.Uuid
-  title            String
-  instructions     String?
-  dueAt            DateTime?
-  maxPoints        Int       @default(100)
+  id                       String    @id @default(uuid()) @db.Uuid
+  courseId                 String    @db.Uuid
+  title                    String
+  instructions             String?
+  dueAt                    DateTime?
+  maxPoints                Int       @default(100)
   /// Accepted upload types, e.g. ["pdf", "docx", "zip", "png", "mp4"].
-  allowedFileTypes String[]  @default([])
-  maxFileSizeMb    Int?
-  allowResubmission Boolean  @default(true)
+  allowedFileTypes         String[]  @default([])
+  maxFileSizeMb            Int?
+  allowResubmission        Boolean   @default(true)
   /// Rubric criteria for scored feedback (PRD §9.6).
-  rubric           Json      @default("[]")
-  isRequiredForCertificate Boolean @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  rubric                   Json      @default("[]")
+  isRequiredForCertificate Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   submissions Submission[]
@@ -826,10 +828,10 @@ model Certificate {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollment Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  template   CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  revokedBy  User?                @relation("CertificateRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment      Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  template        CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  revokedBy       User?                @relation("CertificateRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
   /// 1:0..1 — a certificate has at most one mint transaction (PRD §15).
   mintTransaction MintTransaction?
 
@@ -843,8 +845,10 @@ model Wallet {
   userId         String         @db.Uuid
   address        String
   provider       WalletProvider
-  /// EVM chain id — Avalanche C-Chain first, Polygon-compatible (PRD §11.5).
-  chainId        Int
+  /// Registry key from lib/chains.ts ("base", "polygon", "solana"). A string
+  /// rather than a number because Solana has no numeric chain id, and encoding
+  /// that as 0 would make the column lie.
+  chainKey       String
   isPrimary      Boolean        @default(false)
   connectedAt    DateTime       @default(now())
   disconnectedAt DateTime?
@@ -854,7 +858,7 @@ model Wallet {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   mintTransactions MintTransaction[]
 
-  @@unique([userId, address, chainId])
+  @@unique([userId, address, chainKey])
   @@index([address])
   @@map("wallets")
 }
@@ -872,6 +876,9 @@ model WalletChallenge {
   nonce     String    @unique
   /// Bound at issue time, so a signature for one address cannot link another.
   address   String
+  /// Also bound at issue time: the chain decides how the signature is checked,
+  /// so letting the caller supply it later would let them pick the verifier.
+  chainKey  String
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -888,7 +895,8 @@ model MintTransaction {
   certificateId   String     @unique @db.Uuid
   walletId        String     @db.Uuid
   status          MintStatus @default(MINT_PENDING)
-  chainId         Int
+  /// Registry key from lib/chains.ts, matching Wallet.chainKey.
+  chainKey        String
   contractAddress String?
   tokenId         String?
   transactionHash String?    @unique
@@ -913,26 +921,26 @@ model MintTransaction {
 // ---------------------------------------------------------------------------
 
 model Payment {
-  id            String          @id @default(uuid()) @db.Uuid
-  userId        String          @db.Uuid
-  courseId      String?         @db.Uuid
-  enrollmentId  String?         @unique @db.Uuid
-  provider      PaymentProvider
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @db.Uuid
+  courseId        String?         @db.Uuid
+  enrollmentId    String?         @unique @db.Uuid
+  provider        PaymentProvider
   /// Provider-side transaction reference.
-  reference     String          @unique
-  status        PaymentStatus   @default(PENDING)
+  reference       String          @unique
+  status          PaymentStatus   @default(PENDING)
   /// Amount in kobo (NGN minor units).
-  amountMinor   Int
-  currency      String          @default("NGN")
-  couponCode    String?
-  discountMinor Int             @default(0)
-  refundedMinor Int             @default(0)
-  invoiceUrl    String?
+  amountMinor     Int
+  currency        String          @default("NGN")
+  couponCode      String?
+  discountMinor   Int             @default(0)
+  refundedMinor   Int             @default(0)
+  invoiceUrl      String?
   /// Raw provider webhook payload, retained for reconciliation.
-  providerPayload Json          @default("{}")
-  paidAt        DateTime?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  providerPayload Json            @default("{}")
+  paidAt          DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   user        User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   course      Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
@@ -973,8 +981,8 @@ model Coupon {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  course      Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  createdBy   User?               @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  course      Course?            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdBy   User?              @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
   redemptions CouponRedemption[]
 
   @@index([isActive])
@@ -982,13 +990,13 @@ model Coupon {
 }
 
 model CouponRedemption {
-  id             String   @id @default(uuid()) @db.Uuid
-  couponId       String   @db.Uuid
-  userId         String   @db.Uuid
-  paymentId      String?  @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  couponId      String   @db.Uuid
+  userId        String   @db.Uuid
+  paymentId     String?  @db.Uuid
   /// What the discount was actually worth, in kobo, at redemption time.
-  discountMinor  Int
-  createdAt      DateTime @default(now())
+  discountMinor Int
+  createdAt     DateTime @default(now())
 
   coupon  Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1127,9 +1135,9 @@ model Comment {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  author  User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post    DiscussionPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
-  lesson  Lesson?         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  author  User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post    DiscussionPost?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  lesson  Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   parent  Comment?         @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
   replies Comment[]        @relation("CommentThread")
   likes   DiscussionLike[]
@@ -1214,18 +1222,18 @@ model ConsentLog {
 /// the request against retention obligations, which is why they are recorded
 /// here for an admin to action rather than executed on submission.
 model DataSubjectRequest {
-  id           String            @id @default(uuid()) @db.Uuid
-  userId       String            @db.Uuid
-  type         DataRequestType
-  status       DataRequestStatus @default(PENDING)
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @db.Uuid
+  type        DataRequestType
+  status      DataRequestStatus @default(PENDING)
   /// What the subject asked for, in their own words.
-  details      String?
+  details     String?
   /// What was done, and why — the record of how the request was discharged.
-  resolution   String?
-  handledById  String?           @db.Uuid
-  handledAt    DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  resolution  String?
+  handledById String?           @db.Uuid
+  handledAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   user      User  @relation("DataSubject", fields: [userId], references: [id], onDelete: Cascade)
   handledBy User? @relation("DataRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
@@ -1331,19 +1339,19 @@ model WebhookEndpoint {
 /// One attempt to deliver one event, kept so a partner can be told what we
 /// sent and when, and so a failure can be retried rather than lost.
 model WebhookDelivery {
-  id           String                @id @default(uuid()) @db.Uuid
-  endpointId   String                @db.Uuid
-  event        WebhookEvent
-  payload      Json
-  status       WebhookDeliveryStatus @default(PENDING)
-  attempts     Int                   @default(0)
-  responseCode Int?
-  error        String?
+  id            String                @id @default(uuid()) @db.Uuid
+  endpointId    String                @db.Uuid
+  event         WebhookEvent
+  payload       Json
+  status        WebhookDeliveryStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  responseCode  Int?
+  error         String?
   /// Null once delivered or given up on.
   nextAttemptAt DateTime?
-  deliveredAt  DateTime?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  deliveredAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
