@@ -49,6 +49,14 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
     return null;
   }
 
+  // A password without the second factor someone enrolled is not a signed-in
+  // user. Reported as null rather than as a flag on purpose: thirty-odd call
+  // sites treat a non-null result as authenticated, and a flag they could
+  // forget to read would make two-factor decorative. Pages that need to tell
+  // the difference call getMfaStatus() directly.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.nextLevel === "aal2" && aal.currentLevel === "aal1") return null;
+
   return {
     id: appUser.id,
     email: appUser.email,

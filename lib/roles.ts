@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
+import { getMfaStatus } from "@/lib/mfa";
 
 /** Role names as stored in the Role table (PRD §8.2). */
 export type AppRole = "STUDENT" | "INSTRUCTOR" | "ADMIN" | "SUPER_ADMIN";
@@ -19,10 +20,18 @@ export function dashboardPathFor(user: CurrentUser): string {
  */
 export async function requireUser(returnTo?: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) {
-    redirect(returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login");
+  if (user) return user;
+
+  // Distinguish "not signed in" from "has not finished signing in". Sending
+  // someone with an outstanding factor to /login would have them re-enter a
+  // password, arrive back at the same half-authenticated state, and bounce
+  // again — a loop that presents as a blank page.
+  const mfa = await getMfaStatus();
+  if (mfa.pending) {
+    redirect(returnTo ? `/two-factor?next=${encodeURIComponent(returnTo)}` : "/two-factor");
   }
-  return user;
+
+  redirect(returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login");
 }
 
 /** Require one of the given roles, or send the user to their own portal. */

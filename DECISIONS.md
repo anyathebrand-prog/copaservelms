@@ -20,13 +20,20 @@ No code change; the PRD is now the stale document.
 **§17 q4 — 2FA is optional at launch, not enforced.** No admin or super admin
 is forced through a second factor to sign in.
 
-Worth being precise about what "optional" currently means: nothing is
-implemented. `User.twoFactorEnabled` exists as a column and nothing reads it —
-there is no TOTP enrolment, no challenge, no UI. So today "optional" is
-indistinguishable from "absent". If the intent is "available to anyone who
-wants it", that is a build (Supabase supports TOTP natively, so it is a
-moderate one rather than a cryptographic project). If the intent is "not a
-launch requirement", this is already done.
+Clarified the same day as "anyone who wants it can turn it on", and built:
+TOTP through Supabase's own MFA, enrolled from the profile page, challenged at
+`/two-factor` after a password.
+
+The part that makes it real rather than decorative: a session that has passed a
+password but not an enrolled factor is treated as signed out everywhere.
+`getCurrentUser()` returns null in that state — reported as null rather than as
+a flag because thirty-odd call sites treat non-null as authenticated, and a
+flag any of them could forget to read would leave two-factor purely cosmetic.
+`requireUser` and the middleware both route that session to the challenge
+rather than to `/login`, since sending it to a password form would loop.
+
+Removing a factor requires a current code, not merely a session. Otherwise
+anyone who borrowed an unlocked laptop could strip the protection off.
 
 **§17 q7 — Zoom first.** Already the default: `LiveClassProvider` defaults to
 `ZOOM`. Note that neither provider is integrated in the API sense — an

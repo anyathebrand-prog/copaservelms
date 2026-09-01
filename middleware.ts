@@ -11,6 +11,8 @@ import { updateSession } from "@/lib/supabase/middleware";
  */
 const PROTECTED_PREFIXES = ["/student", "/instructor", "/admin"];
 const AUTH_ROUTES = ["/login", "/signup"];
+/** Where a session that still owes a second factor is sent. */
+const CHALLENGE_ROUTE = "/two-factor";
 
 /**
  * Redirect while keeping any refreshed session cookies.
@@ -34,7 +36,7 @@ function redirectPreservingSession(url: URL, sessionResponse: NextResponse): Nex
 }
 
 export async function middleware(request: NextRequest) {
-  const { response, userId } = await updateSession(request);
+  const { response, userId, mfaPending } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 
   const isProtected = PROTECTED_PREFIXES.some(
@@ -46,6 +48,16 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     // Preserve the destination so login can return them to it.
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
+    return redirectPreservingSession(url, response);
+  }
+
+  // An outstanding second factor outranks everything else: the password alone
+  // has not authenticated anyone yet. Sending them to /portal instead would
+  // bounce back here, because /portal reads the same state.
+  if (userId && mfaPending && (isProtected || AUTH_ROUTES.includes(pathname))) {
+    const url = request.nextUrl.clone();
+    url.pathname = CHALLENGE_ROUTE;
+    url.search = isProtected ? `?next=${encodeURIComponent(pathname + search)}` : "";
     return redirectPreservingSession(url, response);
   }
 

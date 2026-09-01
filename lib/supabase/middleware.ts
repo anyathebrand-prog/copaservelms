@@ -14,6 +14,8 @@ let warned = false;
 export async function updateSession(request: NextRequest): Promise<{
   response: NextResponse;
   userId: string | null;
+  /** Signed in by password, but an enrolled second factor is outstanding. */
+  mfaPending: boolean;
 }> {
   const response = NextResponse.next({ request });
 
@@ -33,7 +35,7 @@ export async function updateSession(request: NextRequest): Promise<{
           "Every request is being treated as signed out; sign-in will not work until they are configured.",
       );
     }
-    return { response, userId: null };
+    return { response, userId: null, mfaPending: false };
   }
 
   let mutableResponse = response;
@@ -65,5 +67,14 @@ export async function updateSession(request: NextRequest): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { response: mutableResponse, userId: user?.id ?? null };
+  // Assurance level comes from the session itself, so this costs no extra
+  // round trip. Checked here as well as server-side so a half-authenticated
+  // session is turned away at the edge rather than deep inside a page.
+  let mfaPending = false;
+  if (user) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    mfaPending = aal?.nextLevel === "aal2" && aal.currentLevel === "aal1";
+  }
+
+  return { response: mutableResponse, userId: user?.id ?? null, mfaPending };
 }

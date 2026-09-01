@@ -41,6 +41,7 @@
     "verify:cohorts": "tsx scripts/verify-cohorts.ts",
     "verify:invoices": "tsx --env-file=.env scripts/verify-invoices.ts",
     "verify:phone-auth": "tsx scripts/verify-phone-auth.ts",
+    "verify:two-factor": "tsx --env-file=.env scripts/verify-two-factor.ts",
     "smoke:portal": "tsx --env-file=.env scripts/smoke-portal.ts"
   },
   "dependencies": {

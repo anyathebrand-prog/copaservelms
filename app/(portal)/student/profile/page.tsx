@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/roles";
+import { listVerifiedFactors } from "@/lib/mfa";
+import { TwoFactorSetup } from "@/components/auth/two-factor-setup";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -14,6 +16,7 @@ export const metadata: Metadata = { title: "Profile" };
  */
 export default async function ProfilePage() {
   const user = await requireUser("/student/profile");
+  const factors = await listVerifiedFactors();
   const profile = await prisma.profile.findUnique({
     where: { userId: user.id },
     select: {
@@ -73,6 +76,8 @@ export default async function ProfilePage() {
           </div>
         </dl>
       </section>
+
+      <TwoFactorSetup factors={factors} />
 
       <p className="text-sm text-muted-foreground">
         Profile editing, consent preferences, and data export arrive with the Privacy Center.
