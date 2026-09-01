@@ -124,6 +124,13 @@ enum PaymentProvider {
   MANUAL
 }
 
+enum WaitlistStatus {
+  PENDING
+  INVITED
+  JOINED
+  UNSUBSCRIBED
+}
+
 enum InvoiceStatus {
   DRAFT
   ISSUED
@@ -1472,4 +1479,51 @@ model InvoiceLine {
 
   @@index([invoiceId])
   @@map("invoice_lines")
+}
+
+/// Someone who wants to know when CopaServe opens (PRD §7.2).
+///
+/// Deliberately not a User. A waitlist signup has agreed to be emailed once;
+/// it has not created an account, accepted terms, or been identified. Creating
+/// a User row for it would put people who have never signed up into the same
+/// table as learners, and every count of "registered learners" would then be
+/// wrong.
+///
+/// Consent is recorded on the row rather than in ConsentLog, which requires a
+/// userId. The exact wording shown is stored alongside the timestamp: under the
+/// NDPA it is not enough to assert that someone consented, it has to be
+/// possible to show what they were told they were agreeing to.
+model WaitlistEntry {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String         @unique
+  name         String?
+  organisation String?
+  /// Which of the training domains brought them, if they said.
+  interest     String?
+  status       WaitlistStatus @default(PENDING)
+
+  /// The wording they agreed to, verbatim, and when.
+  consentText String
+  consentedAt DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  /// Where they came from, for judging which channel is working.
+  source      String?
+
+  /// Single-use, unguessable, and issued at signup rather than at send time:
+  /// withdrawal has to be as easy as consent was, which means the link works
+  /// even if nobody has sent them anything yet.
+  unsubscribeToken String @unique
+
+  invitedAt      DateTime?
+  joinedAt       DateTime?
+  unsubscribedAt DateTime?
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("waitlist_entries")
 }

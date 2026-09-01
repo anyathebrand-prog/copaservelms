@@ -42,7 +42,7 @@ async function main() {
   if (error || !data.session) throw new Error(`sign-in failed: ${error?.message}`);
 
   const cookie = sessionCookies(data.session);
-  const paths = ["/portal", "/admin", "/instructor", "/student", "/admin/cohorts", "/admin/users", "/admin/invoices"];
+  const paths = ["/portal", "/admin", "/instructor", "/student", "/admin/cohorts", "/admin/users", "/admin/invoices", "/admin/waitlist"];
 
   let failures = 0;
 

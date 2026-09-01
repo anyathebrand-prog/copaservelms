@@ -8,6 +8,8 @@ import { Hero } from "@/components/landing/hero";
 import { VerifyWidget } from "@/components/landing/verify-widget";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
+import { WaitlistForm } from "@/components/landing/waitlist-form";
+import { CONSENT_TEXT } from "@/lib/waitlist";
 
 /**
  * Public landing experience (PRD §7).
@@ -284,6 +286,34 @@ export default async function HomePage() {
             ))}
           </div>
         </Section>
+
+        {/* Waitlist — closes the page on the one thing we want before launch. */}
+        <section id="waitlist" className="hero-ink grain relative overflow-hidden text-white">
+          <div aria-hidden className="hero-grid absolute inset-0" />
+          <div
+            aria-hidden
+            className="absolute -left-24 bottom-0 size-96 rounded-full bg-brand-bright/12 blur-[100px]"
+          />
+          <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
+            <Reveal>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-bright">
+                Opening soon
+              </p>
+              <h2 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+                Be first through
+                <span className="block text-white/40">the door.</span>
+              </h2>
+              <p className="mx-auto mt-5 max-w-xl text-lg text-white/60">
+                We are testing with a small group before opening properly. Leave your address and
+                we will email you once, when it is your turn.
+              </p>
+            </Reveal>
+
+            <Reveal delay={120} className="mt-10 text-left">
+              <WaitlistForm consentText={CONSENT_TEXT} source="landing" />
+            </Reveal>
+          </div>
+        </section>
       </main>
 
       {/* 11. Footer */}
