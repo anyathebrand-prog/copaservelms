@@ -38,6 +38,7 @@
     "verify:api-keys": "tsx scripts/verify-api-keys.ts",
     "verify:settings": "tsx scripts/verify-settings.ts",
     "verify:webhooks": "tsx scripts/verify-webhooks.ts",
+    "verify:cohorts": "tsx scripts/verify-cohorts.ts",
     "smoke:portal": "tsx --env-file=.env scripts/smoke-portal.ts"
   },
   "dependencies": {

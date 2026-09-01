@@ -8,6 +8,7 @@ import { StatCard } from "@/components/student/stat-card";
 import { ProgressBar } from "@/components/student/progress-bar";
 import { readOrgBranding } from "@/lib/settings";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { DepartmentsPanel } from "@/components/admin/departments-panel";
 import { updateOrgBrandingAction } from "../../settings/actions";
 import { addMembersAction, bulkEnrolAction, removeMemberAction } from "../actions";
 
@@ -134,6 +135,8 @@ export default async function OrganizationPage({
           </button>
         </form>
       </section>
+
+      <DepartmentsPanel organizationId={organization.id} />
 
       <section className="rounded-2xl border border-border bg-surface p-6">
         <h2 className="font-display text-xl font-semibold">Bulk enrol</h2>
