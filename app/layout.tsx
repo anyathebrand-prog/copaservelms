@@ -1,36 +1,24 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 
 /**
- * Lufga, self-hosted.
+ * Lufga is declared with plain @font-face in globals.css and served from
+ * /public, rather than through next/font/local.
  *
- * One family for the whole site: headings and body differ by weight and size
- * rather than by typeface. This replaces the Inter/Space Grotesk pairing in
- * PRD §6.3 — a deliberate divergence from the spec, not an oversight.
+ * next/font/local emits a generated CSS *module* next to the layout. Building
+ * that alongside Tailwind on Vercel put Tailwind's preflight inside the
+ * generated module, and bare element selectors are illegal in a CSS Module:
  *
- * Only the four weights the codebase uses are shipped (500 and 600 carry most
- * of the interface, 700 the headings, 400 the body), subset to Latin plus the
- * punctuation, currency and arrows actually rendered. Four weights come to
- * ~68KB total, against ~400KB for the unsubset TTFs, and they are served from
- * our own origin rather than fetched from Google.
+ *   Selector "textarea" is not pure. Pure selectors must contain at least one
+ *   local class or id.
  *
- * No italics: the codebase does not use any.
+ * It only reproduced when a build cache was restored, so it passed locally and
+ * on a --force build and failed on every ordinary deployment. Declaring the
+ * faces by hand removes the generated module, and with it the failure.
+ *
+ * What next/font would have done for us is replaced explicitly: the files are
+ * preloaded below, and font-display: swap is set on each face.
  */
-const lufga = localFont({
-  src: [
-    { path: "./fonts/lufga-400.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/lufga-500.woff2", weight: "500", style: "normal" },
-    { path: "./fonts/lufga-600.woff2", weight: "600", style: "normal" },
-    { path: "./fonts/lufga-700.woff2", weight: "700", style: "normal" },
-  ],
-  variable: "--font-lufga",
-  display: "swap",
-  // Lufga has no naira sign, so ₦ is drawn from whichever of these does. The
-  // browser resolves that per glyph, so prices stay readable.
-  fallback: ["system-ui", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-});
-
 export const metadata: Metadata = {
   title: {
     default: "CopaServe — Learn. Get Certified. Verify. Mint.",
@@ -40,9 +28,24 @@ export const metadata: Metadata = {
     "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.",
 };
 
+/** Every weight is on screen at first paint, and all four together are ~68KB. */
+const WEIGHTS = [400, 500, 600, 700] as const;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${lufga.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
+      <head>
+        {WEIGHTS.map((weight) => (
+          <link
+            key={weight}
+            rel="preload"
+            href={`/fonts/lufga-${weight}.woff2`}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ))}
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
   );
