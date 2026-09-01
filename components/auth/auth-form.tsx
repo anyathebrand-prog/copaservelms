@@ -14,13 +14,13 @@ import { browserSupabaseConfigured, createSupabaseBrowserClient } from "@/lib/su
 type Mode = "login" | "signup";
 
 /**
- * The provider ids Supabase understands, of the ones we offer. Narrow rather
- * than string, so a typo in the settings response cannot reach signInWithOAuth.
+ * The provider ids we offer. Narrow rather than string, so a typo in the
+ * settings response cannot reach signInWithOAuth.
  */
-type Provider = "google" | "azure";
+type Provider = "google";
 
 function asProvider(id: string): Provider | null {
-  return id === "google" || id === "azure" ? id : null;
+  return id === "google" ? id : null;
 }
 
 export function AuthForm({

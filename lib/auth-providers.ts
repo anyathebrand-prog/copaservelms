@@ -16,10 +16,21 @@
  * page is already gone. The only honest fix is not to offer the button.
  */
 
+/**
+ * The providers we offer, whatever else Supabase happens to support.
+ *
+ * Deliberately a short list rather than everything available. Consumer
+ * Microsoft accounts were dropped: this platform's learners are Nigerian
+ * compliance and governance professionals, for whom a personal Outlook account
+ * is not the identity they arrive with, and an unused button is one more thing
+ * to keep working.
+ *
+ * Note that this is not the same decision as enterprise SSO. A bank requiring
+ * its staff to sign in against its own Entra ID tenant is SAML, a different
+ * mechanism aimed at a different buyer, and nothing here forecloses it.
+ */
 const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
-  // Supabase names the Microsoft provider "azure".
-  azure: "Microsoft",
 };
 
 export type EnabledProvider = { id: string; label: string };

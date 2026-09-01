@@ -149,24 +149,20 @@ Current base: `https://copaservelms.vercel.app/verify`.
 
 ### Also outstanding
 
-- **Microsoft sign-in needs no domain and can be finished today.** The redirect
-  goes to Supabase, not to us, and Azure does not require domain verification
-  for basic OAuth:
+- **Google sign-in needs the domain.** The redirect goes to Supabase, not to
+  us, so it works immediately for named test users. Publishing the consent
+  screen so the public can sign in requires a homepage and privacy policy on a
+  domain verified in Google Search Console, and `vercel.app` cannot be verified
+  because it is a public suffix.
 
-  1. Azure Portal → App registrations → New registration.
-  2. Redirect URI (Web): `https://<project-ref>.supabase.co/auth/v1/callback`.
-  3. Certificates & secrets → New client secret.
-  4. Supabase → Authentication → Providers → Azure: paste the application (client)
-     id and secret, enable.
+  The sign-in page asks Supabase which providers are enabled and renders only
+  those, so nothing is offered that would dead-end. Enabling Google surfaces its
+  button within five minutes, without a deploy.
 
-- **Google sign-in effectively needs the domain.** The redirect is the same
-  Supabase URL, so it works immediately for named test users. But publishing the
-  consent screen so the public can sign in requires a homepage and privacy policy
-  on a domain verified in Google Search Console, and `vercel.app` cannot be
-  verified because it is a public suffix.
-
-  Until then the buttons stay visible and say so when clicked, rather than
-  failing with "Unsupported provider".
+- **Microsoft was removed.** Consumer Outlook accounts are not the identity
+  these learners arrive with. This is a separate decision from enterprise SSO:
+  a bank requiring its staff to authenticate against its own Entra ID tenant is
+  SAML, which Supabase supports on paid plans, and nothing here forecloses it.
 
 - Email/password and magic link already work — subject to the email note above,
   which is what makes magic link unusable in practice today.
