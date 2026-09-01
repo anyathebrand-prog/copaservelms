@@ -11,6 +11,7 @@ const NAV = [
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/organizations", label: "Organisations" },
+  { href: "/admin/cohorts", label: "Cohorts" },
   { href: "/admin/coupons", label: "Coupons" },
   { href: "/admin/certificates", label: "Certificates" },
   { href: "/admin/privacy", label: "Compliance" },

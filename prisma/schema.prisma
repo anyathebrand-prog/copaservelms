@@ -262,6 +262,10 @@ model User {
   apiKeysCreated      ApiKey[]              @relation("ApiKeyCreator")
   settingsEdits       PlatformSetting[]     @relation("SettingsEditor")
   webhooksCreated     WebhookEndpoint[]     @relation("WebhookCreator")
+  departmentId        String?               @db.Uuid
+  department          Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  cohorts             CohortMember[]
+  cohortsCreated      Cohort[]              @relation("CohortCreator")
   handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
   attendances         LiveClassAttendance[]
   achievements        Achievement[]
@@ -332,6 +336,69 @@ model Profile {
   @@map("profiles")
 }
 
+/// A unit within an organisation — Legal, Risk, Operations (PRD §13.3).
+///
+/// A person belongs to one department at a time, which is why membership is a
+/// column on User rather than a join table: "which department is Ada in" should
+/// have one answer.
+model Department {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  /// Optional internal code, so this can line up with an HR system.
+  code           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      User[]
+
+  /// Two departments with the same name in one organisation would be
+  /// indistinguishable in every report.
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("departments")
+}
+
+/// A group moving through training together (PRD §13.3).
+///
+/// Membership is a join table, unlike a department: someone can be in the
+/// January intake and later the refresher cohort, and both are true.
+model Cohort {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String?   @db.Uuid
+  courseId       String?   @db.Uuid
+  name           String
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course       Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdBy    User?          @relation("CohortCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members      CohortMember[]
+
+  @@index([organizationId])
+  @@index([courseId])
+  @@map("cohorts")
+}
+
+model CohortMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  cohortId String   @db.Uuid
+  userId   String   @db.Uuid
+  joinedAt DateTime @default(now())
+
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, userId])
+  @@index([userId])
+  @@map("cohort_members")
+}
+
 /// Corporate / institutional buyer (PRD §13.3 multi-tenant groundwork).
 model Organization {
   id           String   @id @default(uuid()) @db.Uuid
@@ -344,9 +411,11 @@ model Organization {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  members  User[]
-  apiKeys  ApiKey[]
-  webhooks WebhookEndpoint[]
+  members     User[]
+  apiKeys     ApiKey[]
+  webhooks    WebhookEndpoint[]
+  departments Department[]
+  cohorts     Cohort[]
 
   @@map("organizations")
 }
@@ -414,6 +483,7 @@ model Course {
   discussions DiscussionPost[]
   badges      Badge[]
   coupons     Coupon[]
+  cohorts     Cohort[]
 
   @@index([instructorId])
   @@index([categoryId])
