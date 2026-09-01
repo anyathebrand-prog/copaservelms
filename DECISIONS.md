@@ -9,6 +9,32 @@ Newest first.
 
 ---
 
+## 2026-09-01 — Payments run on BIT Ltd's Paystack, as a separate business
+
+**Decided:** CopaServe bills through the parent company's Paystack account
+rather than its own. Paystack verification is per legal entity, and BIT Ltd is
+already verified, so this skips CAC, bank and ID paperwork entirely.
+
+**With one refinement:** create CopaServe as a *separate Business* under that
+account rather than reusing BIT Ltd's existing keys.
+
+- Checkout shows the business name. A student buying an NDPA course who sees
+  "Business Intelligence Technologies Limited" is likelier to abandon, or to
+  dispute the charge later when their statement does not match what they think
+  they bought.
+- Webhook URLs are per business. Sharing one means every BIT product's
+  transactions POST to CopaServe's endpoint. Nothing breaks —
+  `finalisePayment` returns `UNKNOWN_REFERENCE` and the route still answers 200,
+  so there is no retry storm — but the logs fill with other products' traffic
+  and BIT's other products inherit ours.
+- Settlement and reporting stay separable per product.
+
+**No code change:** `PAYSTACK_SECRET_KEY` is one environment variable and the
+driver interface is already provider-agnostic. Settlement lands in BIT Ltd's
+account either way, since CopaServe is not separately incorporated.
+
+---
+
 ## 2026-09-01 — Minting: students pay their own gas (§17 q6, partial)
 
 **Decided:** the mint transaction is submitted from the student's own wallet

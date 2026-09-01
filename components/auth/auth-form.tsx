@@ -130,7 +130,14 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
       });
       if (error) {
         setPending(false);
-        setError(error.message);
+        // Supabase answers a provider that is switched off with "Unsupported
+        // provider", which reads like the button is broken rather than like a
+        // setting nobody has turned on yet.
+        setError(
+          /unsupported provider|not enabled/i.test(error.message)
+            ? `${provider === "azure" ? "Microsoft" : "Google"} sign-in is not enabled for this deployment yet. Use your email and password.`
+            : error.message,
+        );
       }
     } catch (cause) {
       reportFailure(cause);

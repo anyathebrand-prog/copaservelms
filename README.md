@@ -149,8 +149,27 @@ Current base: `https://copaservelms.vercel.app/verify`.
 
 ### Also outstanding
 
-- **Google and Microsoft sign-in** need enabling in Supabase → Authentication →
-  Providers. Email/password and magic link already work.
+- **Microsoft sign-in needs no domain and can be finished today.** The redirect
+  goes to Supabase, not to us, and Azure does not require domain verification
+  for basic OAuth:
+
+  1. Azure Portal → App registrations → New registration.
+  2. Redirect URI (Web): `https://<project-ref>.supabase.co/auth/v1/callback`.
+  3. Certificates & secrets → New client secret.
+  4. Supabase → Authentication → Providers → Azure: paste the application (client)
+     id and secret, enable.
+
+- **Google sign-in effectively needs the domain.** The redirect is the same
+  Supabase URL, so it works immediately for named test users. But publishing the
+  consent screen so the public can sign in requires a homepage and privacy policy
+  on a domain verified in Google Search Console, and `vercel.app` cannot be
+  verified because it is a public suffix.
+
+  Until then the buttons stay visible and say so when clicked, rather than
+  failing with "Unsupported provider".
+
+- Email/password and magic link already work — subject to the email note above,
+  which is what makes magic link unusable in practice today.
 - **Nobody has used the app in a browser.** Every check so far is server-side.
 
 ## Roadmap
