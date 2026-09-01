@@ -6,13 +6,16 @@ import Link from "next/link";
  *
  * One component so the logo has a single definition: swapping the asset or its
  * proportions later is one edit rather than five. Dimensions come from the
- * artwork's real 6.08:1 ratio, so it never distorts.
+ * artwork's real 4.59:1 ratio, so it never distorts.
  *
- * The supplied logo is solid black. `variant="white"` uses the knockout for
- * dark or brand-green surfaces — a black logo on a green header would be
- * unreadable, and inverting in CSS would also invert the transparency.
+ * Two colourways of one drawing. `dark` is brand green, for light surfaces;
+ * `variant="white"` is the artwork's own pale green, for the ink header,
+ * footer and sidebar. Both are knockouts — the counter of the S is
+ * transparent, so whatever sits behind shows through it, exactly as in the
+ * supplied artwork. Recolouring in CSS is not an option for the same reason:
+ * a filter would invert the transparency along with the fill.
  */
-const RATIO = 1903 / 313;
+const RATIO = 1520 / 331;
 
 export function Logo({
   height = 28,
