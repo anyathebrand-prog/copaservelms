@@ -13,15 +13,28 @@ import { browserSupabaseConfigured, createSupabaseBrowserClient } from "@/lib/su
  */
 type Mode = "login" | "signup";
 
+/**
+ * The provider ids Supabase understands, of the ones we offer. Narrow rather
+ * than string, so a typo in the settings response cannot reach signInWithOAuth.
+ */
 type Provider = "google" | "azure";
 
-const PROVIDERS: { id: Provider; label: string }[] = [
-  { id: "google", label: "Google" },
-  // Supabase names the Microsoft provider "azure".
-  { id: "azure", label: "Microsoft" },
-];
+function asProvider(id: string): Provider | null {
+  return id === "google" || id === "azure" ? id : null;
+}
 
-export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean }) {
+export function AuthForm({
+  mode,
+  configured,
+  // Only the providers Supabase says it will accept. A button for a provider
+  // that is switched off cannot fail gracefully: signInWithOAuth navigates the
+  // browser away before any handler here could run.
+  providers = [],
+}: {
+  mode: Mode;
+  configured: boolean;
+  providers?: { id: string; label: string }[];
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // "/portal" resolves the right dashboard server-side: roles live in the
@@ -130,14 +143,7 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
       });
       if (error) {
         setPending(false);
-        // Supabase answers a provider that is switched off with "Unsupported
-        // provider", which reads like the button is broken rather than like a
-        // setting nobody has turned on yet.
-        setError(
-          /unsupported provider|not enabled/i.test(error.message)
-            ? `${provider === "azure" ? "Microsoft" : "Google"} sign-in is not enabled for this deployment yet. Use your email and password.`
-            : error.message,
-        );
+        setError(error.message);
       }
     } catch (cause) {
       reportFailure(cause);
@@ -226,25 +232,34 @@ export function AuthForm({ mode, configured }: { mode: Mode; configured: boolean
         </button>
       )}
 
-      <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        or continue with
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {/* No enabled providers means no divider either: "or continue with"
+          above an empty row reads as a page that failed to load. */}
+      {providers.length > 0 && (
+        <>
+          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or continue with
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {PROVIDERS.map((provider) => (
-          <button
-            key={provider.id}
-            type="button"
-            onClick={() => handleOAuth(provider.id)}
-            disabled={pending}
-            className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-surface-muted disabled:opacity-60"
-          >
-            {provider.label}
-          </button>
-        ))}
-      </div>
+          <div className={`grid gap-3 ${providers.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {providers.map((provider) => (
+              <button
+                key={provider.id}
+                type="button"
+                onClick={() => {
+                  const id = asProvider(provider.id);
+                  if (id) handleOAuth(id);
+                }}
+                disabled={pending}
+                className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-surface-muted disabled:opacity-60"
+              >
+                {provider.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         {mode === "login" ? (
