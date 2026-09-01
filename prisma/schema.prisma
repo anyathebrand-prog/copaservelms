@@ -238,7 +238,10 @@ model User {
   supabaseUserId   String?    @unique @db.Uuid
   email            String     @unique
   emailVerified    Boolean    @default(false)
-  phone            String?
+  /// E.164, normalised by lib/phone.ts. Unique because an OTP sent to a number
+  /// has to resolve to exactly one account.
+  phone            String?    @unique
+  phoneVerified    Boolean    @default(false)
   status           UserStatus @default(PENDING)
   twoFactorEnabled Boolean    @default(false)
   lastLoginAt      DateTime?

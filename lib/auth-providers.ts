@@ -35,35 +35,49 @@ const PROVIDER_LABELS: Record<string, string> = {
 
 export type EnabledProvider = { id: string; label: string };
 
+export type AuthMethods = {
+  providers: EnabledProvider[];
+  /** Whether Supabase will accept a phone sign-in at all. */
+  phone: boolean;
+};
+
 /**
  * Ask Supabase what it will accept.
  *
  * Revalidated rather than fetched per request: this changes when someone edits
  * a dashboard setting, which is roughly never, and the sign-in page should stay
- * cacheable. Enabling a provider shows up within five minutes.
+ * cacheable. Enabling a method shows up within five minutes.
  */
-export async function getEnabledProviders(): Promise<EnabledProvider[]> {
+export async function getAuthMethods(): Promise<AuthMethods> {
+  const none: AuthMethods = { providers: [], phone: false };
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return [];
+  if (!url || !key) return none;
 
   try {
     const response = await fetch(`${url}/auth/v1/settings`, {
       headers: { apikey: key },
       next: { revalidate: 300 },
     });
-    if (!response.ok) return [];
+    if (!response.ok) return none;
 
     const settings = (await response.json()) as { external?: Record<string, boolean> };
     const external = settings.external ?? {};
 
-    return Object.entries(PROVIDER_LABELS)
-      .filter(([id]) => external[id] === true)
-      .map(([id, label]) => ({ id, label }));
+    return {
+      providers: Object.entries(PROVIDER_LABELS)
+        .filter(([id]) => external[id] === true)
+        .map(([id, label]) => ({ id, label })),
+      // Phone sign-in also needs the SMS hook pointed at this deployment.
+      // Without it Supabase accepts the request and no message is ever sent,
+      // which looks identical to a slow network from the learner's side.
+      phone: external.phone === true,
+    };
   } catch {
     // Sign-in must not depend on this call. Email and password are the primary
-    // path; the worst case here is that a working social button is hidden,
-    // which is far better than offering one that dead-ends.
-    return [];
+    // path, and hiding a working button is a far smaller harm than offering one
+    // that dead-ends on someone else's domain.
+    return none;
   }
 }

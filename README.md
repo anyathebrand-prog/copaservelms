@@ -159,6 +159,23 @@ Current base: `https://copaservelms.vercel.app/verify`.
   those, so nothing is offered that would dead-end. Enabling Google surfaces its
   button within five minutes, without a deploy.
 
+- **Phone sign-in is built but needs three things switched on.** It signs
+  someone into the account that already holds their number — it is a second
+  credential, not a second account, because a learner still needs an email to
+  receive their certificate.
+
+  1. Supabase → Authentication → Providers → Phone: enable.
+  2. Supabase → Authentication → Hooks → Send SMS: point at
+     `https://<deployment>/api/auth/sms-hook` and copy the generated secret
+     into `SUPABASE_SMS_HOOK_SECRET`. Supabase generates the code; Termii
+     delivers it, so no Twilio account is needed.
+  3. Termii: top up, and get a sender ID approved — that needs company
+     documents and takes days.
+
+  The button stays hidden until Supabase reports phone as enabled, so nothing
+  is offered that would dead-end. Numbers are normalised to E.164 by
+  `lib/phone.ts`, which is what stops one person holding several accounts.
+
 - **Microsoft was removed.** Consumer Outlook accounts are not the identity
   these learners arrive with. This is a separate decision from enterprise SSO:
   a bank requiring its staff to authenticate against its own Entra ID tenant is
