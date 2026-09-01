@@ -46,6 +46,16 @@ export function SiteFooter() {
           <ul className="mt-4 space-y-2.5 text-white/70">
             <li>Business Intelligence Technologies Limited</li>
             <li>Lagos, Nigeria</li>
+            <li>
+              <Link href="/privacy" className="transition hover:text-brand-bright">
+                Privacy notice
+              </Link>
+            </li>
+            <li>
+              <Link href="/terms" className="transition hover:text-brand-bright">
+                Terms of service
+              </Link>
+            </li>
           </ul>
         </div>
       </div>

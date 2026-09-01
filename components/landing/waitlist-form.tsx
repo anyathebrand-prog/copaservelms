@@ -130,7 +130,18 @@ export function WaitlistForm({ consentText, source }: { consentText: string; sou
           onChange={(event) => setConsented(event.target.checked)}
           className="mt-0.5 size-4 shrink-0 accent-[#05ff12]"
         />
-        <span className="text-xs leading-relaxed text-white/60">{consentText}</span>
+        <span className="text-xs leading-relaxed text-white/60">
+          {consentText}{" "}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-brand-bright underline"
+          >
+            How we handle your data
+          </a>
+          .
+        </span>
       </label>
 
       {error && (
