@@ -11,9 +11,10 @@ import QRCode from "qrcode";
  * that layout is coordinate-based rather than CSS, which is acceptable for one
  * fixed template.
  *
- * Palette follows the brand green (§6.3). §11.2 specifies purple and gold,
- * which conflicts with the brand — flagged as open question 1 in §17 and
- * resolved here in favour of brand until that is settled.
+ * Palette is the brand green (§6.3). §11.2 specified purple and gold, which
+ * conflicted with the brand; §17 question 1 settled it in favour of green on
+ * 2026-09-01, which is what this already did. The PRD text is now the stale
+ * one — see DECISIONS.md.
  */
 
 export type CertificateFields = {

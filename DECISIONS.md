@@ -9,6 +9,52 @@ Newest first.
 
 ---
 
+## 2026-09-01 — Four of the §17 open questions answered
+
+**§17 q1 — Certificate palette: brand green.** §11.2 asked for purple and gold,
+which conflicts with the green/black/white brand in §6.3. Settled in favour of
+green, which is what `lib/certificates/pdf.ts` already drew — it had picked
+brand over the PRD text and said so in a comment while the question was open.
+No code change; the PRD is now the stale document.
+
+**§17 q4 — 2FA is optional at launch, not enforced.** No admin or super admin
+is forced through a second factor to sign in.
+
+Worth being precise about what "optional" currently means: nothing is
+implemented. `User.twoFactorEnabled` exists as a column and nothing reads it —
+there is no TOTP enrolment, no challenge, no UI. So today "optional" is
+indistinguishable from "absent". If the intent is "available to anyone who
+wants it", that is a build (Supabase supports TOTP natively, so it is a
+moderate one rather than a cryptographic project). If the intent is "not a
+launch requirement", this is already done.
+
+**§17 q7 — Zoom first.** Already the default: `LiveClassProvider` defaults to
+`ZOOM`. Note that neither provider is integrated in the API sense — an
+instructor pastes a meeting link their provider gave them, and attendance is
+self-reported. Prioritising Zoom means Zoom is the one that gets a real OAuth
+and meeting-creation integration first.
+
+**§17 q3 — Metric targets:**
+
+| | Target |
+|---|---|
+| Registered learners | 1,000 |
+| Certificates issued | 1,000 |
+| Corporate/institutional accounts | 20 |
+
+Against today: 5 users (all demo fixtures), 0 certificates, 0 organisations.
+The certificates target is the demanding one — it implies roughly every
+registered learner completes a course, where a typical online course completion
+rate is well under half. Either the learner target needs to be higher than the
+certificate target, or the courses need to be short enough that finishing is
+the norm rather than the exception.
+
+**Still open in §17:** q2 (which corporate accounts are committed for launch),
+q5 (verification domain, pending registration) and the rest of q6 (who owns
+smart contract development and audit).
+
+---
+
 ## 2026-09-01 — Payments run on BIT Ltd's Paystack, as a separate business
 
 **Decided:** CopaServe bills through the parent company's Paystack account
