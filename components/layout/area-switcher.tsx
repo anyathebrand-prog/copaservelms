@@ -33,7 +33,10 @@ export function AreaSwitcher({ roles }: { roles: string[] }) {
   if (areas.length < 2) return null;
 
   return (
-    <nav aria-label="Switch area" className="flex items-center gap-1 rounded-lg bg-surface-muted p-1">
+    <nav
+      aria-label="Switch area"
+      className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1"
+    >
       {areas.map((area) => {
         const active =
           area.href === "/student"
@@ -45,8 +48,8 @@ export function AreaSwitcher({ roles }: { roles: string[] }) {
             key={area.href}
             href={area.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              active ? "bg-surface text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
+            className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+              active ? "bg-brand-bright text-brand-ink" : "text-white/55 hover:text-white"
             }`}
           >
             {area.label}
