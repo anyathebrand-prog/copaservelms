@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { CONSENT_TEXT, joinWaitlist } from "@/lib/waitlist";
+import { joinWaitlist } from "@/lib/waitlist";
 
 /**
  * Join the waitlist, from the public landing page.
@@ -36,5 +36,3 @@ export async function joinWaitlistAction(
   if (!result.ok) return { ok: false, error: result.detail ?? "We could not add you just now." };
   return { ok: true, alreadyOn: result.data.alreadyOn };
 }
-
-export { CONSENT_TEXT };
