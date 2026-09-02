@@ -91,8 +91,11 @@ export async function renderCertificatePdf(fields: CertificateFields): Promise<U
   } else {
     centre(fields.institutionName.toUpperCase(), sansBold, 11, HEIGHT - 80, BRAND);
   }
-  centre(fields.institutionName.toUpperCase(), sans, 8, HEIGHT - 104, MUTED);
-  centre("CERTIFICATE OF COMPLETION", serifBold, 30, HEIGHT - 138, INK);
+  // The institution name used to sit here, under the logo. Removed: the logo
+  // already says who issued this, and the awarding institution is still named
+  // in the signature block and on the verification page, which is where anyone
+  // checking the certificate actually looks.
+  centre("CERTIFICATE OF COMPLETION", serifBold, 30, HEIGHT - 132, INK);
   centre("This is to certify that", serif, 13, HEIGHT - 175, MUTED);
 
   // The holder's name is the focal point, so it is sized to fit rather than

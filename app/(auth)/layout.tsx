@@ -9,9 +9,6 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md">{children}</div>
       </main>
-      <footer className="p-6 text-center text-xs text-muted-foreground">
-        Powered by Business Intelligence Technologies Limited
-      </footer>
     </div>
   );
 }

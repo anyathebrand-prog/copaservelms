@@ -55,22 +55,7 @@ export function Hero({
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pb-28 pt-16 sm:pb-36 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
         <div>
-          <motion.p
-            initial={reduced ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 py-1.5 pl-2 pr-4 text-xs font-medium text-white/70 backdrop-blur"
-          >
-            <span className="relative flex size-5 items-center justify-center">
-              {!reduced && (
-                <span className="animate-pulse-ring absolute size-2 rounded-full bg-brand-bright" />
-              )}
-              <span className="relative size-2 rounded-full bg-brand-bright" />
-            </span>
-            Powered by Business Intelligence Technologies Limited
-          </motion.p>
-
-          <h1 className="mt-7 font-display text-[clamp(2.9rem,8.5vw,5.5rem)] font-bold leading-[0.94] tracking-[-0.035em]">
+          <h1 className="font-display text-[clamp(2.9rem,8.5vw,5.5rem)] font-bold leading-[0.94] tracking-[-0.035em]">
             {HEADLINE.map((word, index) => (
               <motion.span
                 key={word}
