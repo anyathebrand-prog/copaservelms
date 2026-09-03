@@ -47,10 +47,12 @@
     "verify:waitlist": "tsx --env-file=.env scripts/verify-waitlist.ts",
     "verify:completion": "tsx --env-file=.env scripts/verify-completion.ts",
     "verify:instructors": "tsx --env-file=.env scripts/verify-instructor-applications.ts",
+    "verify:quiz-authoring": "tsx --env-file=.env scripts/verify-quiz-authoring.ts",
     "smoke:portal": "tsx --env-file=.env scripts/smoke-portal.ts",
     "smoke:waitlist": "tsx --env-file=.env scripts/smoke-waitlist.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@noble/curves": "^2.4.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
@@ -65,7 +67,8 @@
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "viem": "^2.56.1"
+    "viem": "^2.56.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

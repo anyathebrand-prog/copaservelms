@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/roles";
 import { getCourseForEditing } from "@/lib/instructor";
+import { QuizzesSection } from "@/components/instructor/quizzes-section";
 import { CurriculumEditor } from "@/components/instructor/curriculum-editor";
 import { StatusBadge } from "@/components/instructor/status-badge";
 import { setStatusAction, updateCourseAction } from "../../actions";
@@ -23,9 +24,17 @@ export default async function EditCoursePage({
     `/instructor/courses/${courseId}`,
   );
 
-  const [course, categories] = await Promise.all([
+  const [course, categories, quizzes] = await Promise.all([
     getCourseForEditing(courseId, user.id, user.roles),
     prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.quiz.findMany({
+      where: { courseId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true, title: true, passingScore: true,
+        _count: { select: { questions: true, attempts: true } },
+      },
+    }),
   ]);
 
   if (!course) notFound();
@@ -193,6 +202,9 @@ export default async function EditCoursePage({
 
           <fieldset className="rounded-xl border border-border p-4">
             <legend className="px-2 text-sm font-medium">Certificate eligibility</legend>
+            <p className="mb-4 px-2 text-xs text-muted-foreground">
+              The minimum score applies to the quizzes on this course, which are managed below.
+            </p>
             <div className="grid gap-4 sm:grid-cols-3">
               <label className="block">
                 <span className="mb-1.5 block text-sm">Minimum quiz score (%)</span>
@@ -247,6 +259,8 @@ export default async function EditCoursePage({
       </section>
 
       <CurriculumEditor courseId={course.id} modules={course.modules} locked={locked} />
+
+      <QuizzesSection courseId={course.id} quizzes={quizzes} locked={locked} />
     </div>
   );
 }
