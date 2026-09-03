@@ -10,6 +10,7 @@ import {
   Download,
   Eye,
   FileText,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
   MailPlus,
@@ -88,6 +89,7 @@ export const STUDENT_NAV: NavGroup[] = [
       { href: "/student/payments", label: "Payments", icon: CreditCard },
       { href: "/student/profile", label: "Profile", icon: User },
       { href: "/student/privacy", label: "Privacy", icon: ShieldCheck },
+      { href: "/student/teach", label: "Teach with us", icon: GraduationCap },
     ],
   },
 ];
@@ -116,6 +118,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/courses", label: "Courses", icon: BookOpen, primary: true },
       { href: "/admin/users", label: "Users", icon: Users, primary: true },
+      { href: "/admin/instructors", label: "Instructors", icon: GraduationCap },
       { href: "/admin/organizations", label: "Organisations", icon: Building2 },
       { href: "/admin/cohorts", label: "Cohorts", icon: UsersRound },
       { href: "/admin/waitlist", label: "Waitlist", icon: MailPlus },

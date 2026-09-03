@@ -124,6 +124,13 @@ enum PaymentProvider {
   MANUAL
 }
 
+enum InstructorApplicationStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  WITHDRAWN
+}
+
 enum WaitlistStatus {
   PENDING
   INVITED
@@ -257,41 +264,43 @@ model User {
   /// NDPA erasure: set when a deletion request is fulfilled; row is redacted, not dropped.
   deletedAt        DateTime?
 
-  profile             Profile?
-  roles               UserRole[]
-  organizationId      String?               @db.Uuid
-  organization        Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  coursesTaught       Course[]              @relation("CourseInstructor")
-  enrollments         Enrollment[]
-  quizAttempts        QuizAttempt[]
-  submissions         Submission[]
-  gradedSubmissions   Submission[]          @relation("SubmissionGrader")
-  certificates        Certificate[]
-  revokedCertificates Certificate[]         @relation("CertificateRevoker")
-  wallets             Wallet[]
-  payments            Payment[]
-  notifications       Notification[]
-  consentLogs         ConsentLog[]
-  auditLogs           AuditLog[]
-  dataRequests        DataSubjectRequest[]  @relation("DataSubject")
-  couponsCreated      Coupon[]              @relation("CouponCreator")
-  couponRedemptions   CouponRedemption[]
-  discussionLikes     DiscussionLike[]
-  walletChallenges    WalletChallenge[]
-  apiKeysCreated      ApiKey[]              @relation("ApiKeyCreator")
-  settingsEdits       PlatformSetting[]     @relation("SettingsEditor")
-  webhooksCreated     WebhookEndpoint[]     @relation("WebhookCreator")
-  departmentId        String?               @db.Uuid
-  department          Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  cohorts             CohortMember[]
-  cohortsCreated      Cohort[]              @relation("CohortCreator")
-  handledDataRequests DataSubjectRequest[]  @relation("DataRequestHandler")
-  attendances         LiveClassAttendance[]
-  achievements        Achievement[]
-  discussionPosts     DiscussionPost[]
-  comments            Comment[]
-  lessonProgress      LessonProgress[]
-  invoicesAuthored    Invoice[]             @relation("InvoiceAuthor")
+  profile                Profile?
+  roles                  UserRole[]
+  organizationId         String?                 @db.Uuid
+  organization           Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  coursesTaught          Course[]                @relation("CourseInstructor")
+  enrollments            Enrollment[]
+  quizAttempts           QuizAttempt[]
+  submissions            Submission[]
+  gradedSubmissions      Submission[]            @relation("SubmissionGrader")
+  certificates           Certificate[]
+  revokedCertificates    Certificate[]           @relation("CertificateRevoker")
+  wallets                Wallet[]
+  payments               Payment[]
+  notifications          Notification[]
+  consentLogs            ConsentLog[]
+  auditLogs              AuditLog[]
+  dataRequests           DataSubjectRequest[]    @relation("DataSubject")
+  couponsCreated         Coupon[]                @relation("CouponCreator")
+  couponRedemptions      CouponRedemption[]
+  discussionLikes        DiscussionLike[]
+  walletChallenges       WalletChallenge[]
+  apiKeysCreated         ApiKey[]                @relation("ApiKeyCreator")
+  settingsEdits          PlatformSetting[]       @relation("SettingsEditor")
+  webhooksCreated        WebhookEndpoint[]       @relation("WebhookCreator")
+  departmentId           String?                 @db.Uuid
+  department             Department?             @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  cohorts                CohortMember[]
+  cohortsCreated         Cohort[]                @relation("CohortCreator")
+  handledDataRequests    DataSubjectRequest[]    @relation("DataRequestHandler")
+  attendances            LiveClassAttendance[]
+  achievements           Achievement[]
+  discussionPosts        DiscussionPost[]
+  comments               Comment[]
+  lessonProgress         LessonProgress[]
+  instructorApplications InstructorApplication[] @relation("InstructorApplicant")
+  reviewedApplications   InstructorApplication[] @relation("InstructorApplicationReviewer")
+  invoicesAuthored       Invoice[]               @relation("InvoiceAuthor")
 
   @@index([organizationId])
   @@index([status])
@@ -1526,4 +1535,44 @@ model WaitlistEntry {
   @@index([status])
   @@index([createdAt])
   @@map("waitlist_entries")
+}
+
+/// A request to teach on CopaServe (PRD §13.2 "approve instructors").
+///
+/// Signing up never grants INSTRUCTOR: a certificate is only worth something
+/// because not anyone can issue one, so the role is granted by an admin. What
+/// was missing was any way to *ask*. A prospective instructor signed up, landed
+/// in the student portal, and had no route to say so; an admin had no list of
+/// people waiting. It happened by email or not at all.
+///
+/// Deliberately not a role request in general. There is no equivalent for
+/// ADMIN: administrators are invited, never self-nominated.
+model InstructorApplication {
+  id     String                      @id @default(uuid()) @db.Uuid
+  userId String                      @db.Uuid
+  status InstructorApplicationStatus @default(PENDING)
+
+  /// What they want to teach.
+  expertise  String
+  /// Their background, in their own words.
+  background String
+  /// Somewhere that corroborates it — LinkedIn, a publication, a portfolio.
+  link       String?
+
+  submittedAt DateTime @default(now())
+
+  reviewedById String?   @db.Uuid
+  reviewedAt   DateTime?
+  /// Required when declining. Someone turned down is owed a reason.
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User  @relation("InstructorApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("InstructorApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([userId])
+  @@map("instructor_applications")
 }

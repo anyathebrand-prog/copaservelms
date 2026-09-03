@@ -4,6 +4,7 @@ import {
   Award,
   BookOpen,
   Building2,
+  GraduationCap,
   ScrollText,
   ShieldCheck,
   UserCheck,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { requireRole } from "@/lib/roles";
 import { getAdminOverview, getCourseQueue } from "@/lib/admin";
+import { getApplicationSummary } from "@/lib/instructor-applications";
 import { StatCard } from "@/components/student/stat-card";
 import { StatusBadge } from "@/components/instructor/status-badge";
 import { EmptyState, HeroFigure, HeroMetric, Panel } from "@/components/ui/panel";
@@ -29,7 +31,11 @@ export const metadata: Metadata = { title: "Admin" };
  */
 export default async function AdminDashboard() {
   const user = await requireRole(["ADMIN", "SUPER_ADMIN"], "/admin");
-  const [overview, queue] = await Promise.all([getAdminOverview(), getCourseQueue("SUBMITTED")]);
+  const [overview, queue, applications] = await Promise.all([
+    getAdminOverview(),
+    getCourseQueue("SUBMITTED"),
+    getApplicationSummary(),
+  ]);
 
   const naira = new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -61,7 +67,9 @@ export default async function AdminDashboard() {
         </HeroMetric>
 
         <Panel title="Needs attention">
-          {overview.pendingCourses === 0 && overview.pendingUsers === 0 ? (
+          {overview.pendingCourses === 0 &&
+          overview.pendingUsers === 0 &&
+          applications.pending === 0 ? (
             <EmptyState>Nothing is waiting on you.</EmptyState>
           ) : (
             <ul className="space-y-3">
@@ -81,6 +89,15 @@ export default async function AdminDashboard() {
                   count={overview.pendingUsers}
                   noun="account"
                   detail="awaiting approval"
+                />
+              )}
+              {applications.pending > 0 && (
+                <QueueRow
+                  href="/admin/instructors"
+                  icon={GraduationCap}
+                  count={applications.pending}
+                  noun="applicant"
+                  detail="waiting to teach"
                 />
               )}
             </ul>
