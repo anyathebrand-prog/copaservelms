@@ -45,6 +45,7 @@
     "verify:two-factor": "tsx --env-file=.env scripts/verify-two-factor.ts",
     "verify:waitlist": "tsx --env-file=.env scripts/verify-waitlist.ts",
     "verify:completion": "tsx --env-file=.env scripts/verify-completion.ts",
+    "verify:instructors": "tsx --env-file=.env scripts/verify-instructor-applications.ts",
     "smoke:portal": "tsx --env-file=.env scripts/smoke-portal.ts",
     "smoke:waitlist": "tsx --env-file=.env scripts/smoke-waitlist.ts"
   },
