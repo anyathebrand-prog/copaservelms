@@ -17,6 +17,7 @@
     "verify:data-layer": "tsx scripts/verify-data-layer.ts",
     "verify:portal": "tsx scripts/verify-student-portal.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
+    "seed:courses": "tsx --env-file=.env scripts/seed-courses.ts",
     "verify:instructor": "tsx scripts/verify-instructor.ts",
     "verify:admin": "tsx scripts/verify-admin.ts",
     "verify:privacy": "tsx scripts/verify-privacy.ts",
