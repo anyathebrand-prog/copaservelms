@@ -189,7 +189,10 @@ async function main() {
     data: { userId: learner, courseId: course.id, status: "ACTIVE" }, select: { id: true },
   });
   await prisma.quizAttempt.create({
-    data: { quizId: quiz.data.id, userId: learner, enrollmentId: enrolment.id, status: "SUBMITTED" },
+    data: {
+      quizId: quiz.data.id, userId: learner, enrollmentId: enrolment.id,
+      attemptNumber: 1, status: "SUBMITTED",
+    },
   });
 
   const deletion = await deleteQuiz(quiz.data.id, owner, ["INSTRUCTOR"]);
@@ -205,9 +208,9 @@ async function main() {
   );
   if (!spare.ok) return finish();
 
-  const removedQuestion = await deleteQuestion(second.ok ? "" : "", owner, ["INSTRUCTOR"]);
+  const ghost = await deleteQuestion(crypto.randomUUID(), owner, ["INSTRUCTOR"]);
   check("deleting a question that does not exist is refused",
-    !removedQuestion.ok && removedQuestion.error === "NOT_FOUND", removedQuestion.ok ? "deleted!" : "refused");
+    !ghost.ok && ghost.error === "NOT_FOUND", ghost.ok ? "deleted!" : ghost.error);
 
   const spareGone = await deleteQuiz(spare.data.id, owner, ["INSTRUCTOR"]);
   check("an unattempted quiz can be deleted", spareGone.ok, spareGone.ok ? "deleted" : spareGone.error);
