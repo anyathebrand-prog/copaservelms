@@ -111,7 +111,12 @@ async function inspect(browser: Browser, cookies: { name: string; value: string 
   );
 
   const page = await context.newPage();
-  await page.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 60_000 });
+  // "load" rather than "networkidle": a lesson whose media URL points at a
+  // third-party page may never go idle, and layout has settled long before
+  // that would matter. The pause lets fonts land, which changes text widths.
+  await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 60_000 });
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(400);
 
   const result = (await page.evaluate(FIND_OVERFLOW)) as {
     limit: number;
