@@ -62,7 +62,10 @@ export default async function NotificationsPage() {
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
+                {/* break-words because notification bodies carry credential ids
+                    and verification URLs, and an unbreakable token is wider
+                    than a phone. */}
+                <div className="min-w-0 break-words">
                   <p className="font-medium">{notification.title}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{notification.body}</p>
                 </div>

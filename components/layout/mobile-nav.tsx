@@ -113,12 +113,15 @@ export function MobileNav({ area }: { area: PortalArea }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-1 flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium transition ${
+                // min-w-0 so flex-1 can actually shrink: a flex item's default
+                // minimum is its content width, so "Certificates" held the bar
+                // wider than a small phone and pushed More off the screen.
+                className={`flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium transition ${
                   active ? "text-brand-bright" : "text-white/50"
                 }`}
               >
                 <Icon className="size-5" />
-                <span className="truncate">{item.label}</span>
+                <span className="w-full truncate text-center">{item.label}</span>
               </Link>
             );
           })}
@@ -127,7 +130,7 @@ export function MobileNav({ area }: { area: PortalArea }) {
             type="button"
             onClick={() => setOpen(true)}
             aria-expanded={open}
-            className="flex flex-1 flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium text-white/50 transition"
+            className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-2.5 text-[10px] font-medium text-white/50 transition"
           >
             <Menu className="size-5" />
             More

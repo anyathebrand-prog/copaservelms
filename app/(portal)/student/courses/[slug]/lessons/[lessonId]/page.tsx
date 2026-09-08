@@ -84,7 +84,7 @@ export default async function LessonPage({
         ) : null}
 
         {lesson.content && (
-          <div className="prose-sm max-w-none whitespace-pre-wrap rounded-2xl border border-border bg-surface p-6 text-sm leading-relaxed">
+          <div className="prose-sm max-w-none break-words whitespace-pre-wrap rounded-2xl border border-border bg-surface p-6 text-sm leading-relaxed">
             {lesson.content}
           </div>
         )}
@@ -156,8 +156,14 @@ export default async function LessonPage({
         </footer>
       </article>
 
-      {/* Persistent course progress sidebar (§9.4). */}
-      <aside className="lg:sticky lg:top-24 lg:self-start">
+      {/* Persistent course progress sidebar (§9.4).
+
+          min-w-0 because a grid item defaults to min-width:auto, which is its
+          min-content width — and the lesson list below is a column of nowrap
+          titles. Without it the sidebar refused to shrink below its longest
+          title, widening the single mobile column past the viewport and
+          scrolling the whole page, header included, sideways. */}
+      <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
         <div className="rounded-2xl border border-border bg-surface p-5">
           <p className="text-sm font-medium">Course progress</p>
           <div className="mt-3 space-y-2">
@@ -167,7 +173,7 @@ export default async function LessonPage({
             </p>
           </div>
 
-          <ol className="mt-5 max-h-[50vh] space-y-1 overflow-y-auto">
+          <ol className="mt-5 max-h-[50vh] space-y-1 overflow-y-auto overflow-x-hidden">
             {lessons.map((item) => (
               <li key={item.id}>
                 <Link

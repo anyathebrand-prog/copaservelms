@@ -154,7 +154,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
             )}
           </article>
 
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl border border-border bg-surface p-6">
               <p className="font-display text-3xl font-bold">
                 {isFree
