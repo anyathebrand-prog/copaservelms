@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { CONSENT_TEXT } from "@/lib/waitlist";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Public landing experience (PRD §7).
@@ -26,6 +27,7 @@ import { CONSENT_TEXT } from "@/lib/waitlist";
 export const revalidate = 300;
 
 export default async function HomePage() {
+  const settings = await getSettings();
   const [featured, certificationCount, categories] = await Promise.all([
     prisma.course.findMany({
       where: { status: "PUBLISHED" },
@@ -248,8 +250,17 @@ export default async function HomePage() {
                 Corporate accounts get departments and cohorts, consolidated reporting on staff
                 completion, verifiable proof of training, and dedicated onboarding.
               </p>
+              {/* The address is a setting, not a constant: it was hardcoded to a
+                  .example placeholder, which is a reserved domain that can
+                  never receive mail, so every corporate enquiry bounced. It is
+                  now editable at /admin/settings by the people who own it.
+
+                  With no address set the button goes to the waitlist rather
+                  than to a mailto with nothing behind it — the failure this
+                  replaces was a dead link, and a fallback that is also a dead
+                  link is not a fix. */}
               <a
-                href="mailto:training@bitltd.example"
+                href={settings.supportEmail ? `mailto:${settings.supportEmail}` : "/waitlist"}
                 className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Talk to us

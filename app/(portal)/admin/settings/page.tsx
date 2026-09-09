@@ -46,7 +46,7 @@ export default async function SettingsPage() {
             name="supportEmail"
             type="email"
             defaultValue={settings.supportEmail ?? ""}
-            placeholder="support@copaserve.ng"
+            placeholder="support@copaserve.com.ng"
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
           />
           <span className="mt-1 block text-xs text-muted-foreground">
