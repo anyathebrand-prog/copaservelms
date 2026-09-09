@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { BootScreen } from "@/components/brand/boot-screen";
 
 /**
  * Lufga is declared with plain @font-face in globals.css and served from
@@ -46,7 +47,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           />
         ))}
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        {/* First in the body so it is painted with the first frame rather than
+            after the page it is covering. */}
+        <BootScreen />
+        {children}
+      </body>
     </html>
   );
 }

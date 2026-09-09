@@ -190,6 +190,40 @@ body {
   100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* The first-load cover.
+
+   Ink rather than white: the landing hero and the whole portal chrome are ink,
+   so this hands over to them without a flash. On the lighter inner pages it
+   reads as a curtain lifting, which is the right way round — a white cover
+   handing over to a dark hero is just a flash.
+
+   The give-up animation is the point of failure covered: it has a six second
+   delay and no duration, so with JavaScript working it never runs, and without
+   it the page is uncovered anyway. A splash that can strand someone on a blank
+   rectangle is worse than no splash. */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-ink);
+  color: var(--brand-green-pale);
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+  animation: boot-give-up 0s linear 6s forwards;
+}
+
+.boot-screen-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes boot-give-up {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
 /* The brand mark as a loader.
 
    The two slabs of the mark are an interlock, so the motion is the one the
