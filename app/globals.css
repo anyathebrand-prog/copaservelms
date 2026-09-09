@@ -190,6 +190,61 @@ body {
   100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* The brand mark as a loader.
+
+   The two slabs of the mark are an interlock, so the motion is the one the
+   drawing already implies: they part along the diagonal they were assembled
+   on, then snap back together. Nothing rotates — a spinning logo is a logo
+   nobody can read, and the shear in this mark makes rotation read as a
+   mistake.
+
+   Out is smooth and in is decisive, which is what makes the closed position
+   land as a beat rather than a stop. */
+@keyframes mark-part-down {
+  0%, 6% { transform: translate(0, 0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  40%, 52% { transform: translate(5.5px, 5.5px); animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
+  86%, 100% { transform: translate(0, 0); }
+}
+
+@keyframes mark-part-up {
+  0%, 6% { transform: translate(0, 0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  40%, 52% { transform: translate(-5.5px, -5.5px); animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
+  86%, 100% { transform: translate(0, 0); }
+}
+
+/* Secondary: the mark loses a little weight while it is open and regains it on
+   close, so the two halves read as one object coming apart rather than two
+   sliding past each other. */
+@keyframes mark-open-fade {
+  0%, 6% { opacity: 1; }
+  40%, 52% { opacity: 0.9; }
+  86%, 100% { opacity: 1; }
+}
+
+/* Ambient: a breath under everything, off the primary's phase so the loop
+   never lands flat. */
+@keyframes mark-breathe {
+  0%, 100% { transform: scale(1); }
+  46% { transform: scale(1.04); }
+}
+
+.mark-loader { animation: mark-breathe 1.6s ease-in-out infinite; }
+.mark-slab-down { animation: mark-part-down 1.6s infinite, mark-open-fade 1.6s ease-in-out infinite; }
+.mark-slab-up { animation: mark-part-up 1.6s infinite, mark-open-fade 1.6s ease-in-out infinite; }
+
+/* A loader still has to say it is working when motion is reduced, so the
+   blanket rule below would leave a frozen logo and no signal at all. Opacity
+   alone is the safe substitute: it carries no movement to trigger a vestibular
+   response, and the slabs stay locked together. */
+@media (prefers-reduced-motion: reduce) {
+  .mark-loader { animation: none !important; }
+  .mark-slab-down,
+  .mark-slab-up {
+    animation: mark-open-fade 1.8s ease-in-out infinite !important;
+    transform: none !important;
+  }
+}
+
 .animate-float { animation: float 7s ease-in-out infinite; }
 .animate-float-slow { animation: float 9s ease-in-out infinite; }
 .animate-float-delayed { animation: float 8s ease-in-out -3s infinite; }
