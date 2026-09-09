@@ -228,6 +228,33 @@ body {
   46% { transform: scale(1.04); }
 }
 
+/* At button size the parting motion stops working, and measuring it is what
+   showed why: the travel is proportional, so at 14px the slabs move two thirds
+   of a pixel and the loop reads as a blur. Scaling the travel up to compensate
+   separates them so far that the two halves stop reading as one logo, and the
+   closed mark is already losing its counters below about 18px.
+
+   So small sizes keep the mark whole and hand the interlock to light instead:
+   the two slabs trade weight, which is legible at 18px where a 1px slide is
+   not. Same mark, same idea, motion sized to the space. */
+@keyframes mark-trade-a {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.97); }
+}
+
+@keyframes mark-trade-b {
+  0%, 100% { opacity: 0.3; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.mark-slab-trade-a { animation: mark-trade-a 1.2s ease-in-out infinite; }
+.mark-slab-trade-b { animation: mark-trade-b 1.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mark-slab-trade-a,
+  .mark-slab-trade-b { transform: none !important; }
+}
+
 .mark-loader { animation: mark-breathe 1.6s ease-in-out infinite; }
 .mark-slab-down { animation: mark-part-down 1.6s infinite, mark-open-fade 1.6s ease-in-out infinite; }
 .mark-slab-up { animation: mark-part-up 1.6s infinite, mark-open-fade 1.6s ease-in-out infinite; }

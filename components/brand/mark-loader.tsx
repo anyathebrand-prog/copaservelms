@@ -12,34 +12,59 @@ import { MARK_RATIO, MARK_VIEW_BOX, SLAB_DOWN, SLAB_UP } from "@/components/bran
  * state that has to ship a client bundle before it can appear is a loading
  * state that arrives after the thing it was covering for.
  *
+ * Below COMPACT_BELOW the slabs trade weight instead of parting. Measuring the
+ * mark at button sizes is what forced that: the travel is proportional, so at
+ * 14px the slabs move two thirds of a pixel and the loop reads as a blur —
+ * and scaling the travel up to compensate pushes the two halves so far apart
+ * they stop reading as one logo.
+ *
  * Announced with role="status" and a real label, because a spinner that only
  * exists visually leaves a screen reader on a silent page with no way to tell
  * "working" from "broken".
  */
+
+/** Below this height the parting motion is smaller than a pixel. */
+const COMPACT_BELOW = 28;
+
 export function MarkLoader({
   size = 40,
   label = "Loading",
   className = "",
 }: {
   size?: number;
-  /** Read out to assistive technology. Say what is loading where you can. */
+  /**
+   * Read out to assistive technology. Say what is loading where you can; pass
+   * "" when the surrounding control already announces that it is busy.
+   */
   label?: string;
   className?: string;
 }) {
+  // An empty label means the surrounding control already announces the state
+  // — a button with aria-busy, say. Nesting a second live region inside that
+  // makes a screen reader say it twice.
+  const announces = label !== "";
+  const compact = size < COMPACT_BELOW;
+  const up = compact ? "mark-slab-trade-a" : "mark-slab-up";
+  const down = compact ? "mark-slab-trade-b" : "mark-slab-down";
+
   return (
-    <span role="status" className={`inline-flex items-center ${className}`}>
+    <span
+      role={announces ? "status" : undefined}
+      aria-hidden={announces ? undefined : true}
+      className={`inline-flex items-center ${className}`}
+    >
       <svg
         viewBox={MARK_VIEW_BOX}
         width={Math.round(size * MARK_RATIO)}
         height={size}
         fill="currentColor"
         aria-hidden
-        className="mark-loader overflow-visible"
+        className={`overflow-visible ${compact ? "" : "mark-loader"}`}
       >
-        <path className="mark-slab-up" d={SLAB_UP} />
-        <path className="mark-slab-down" d={SLAB_DOWN} />
+        <path className={up} d={SLAB_UP} />
+        <path className={down} d={SLAB_DOWN} />
       </svg>
-      <span className="sr-only">{label}</span>
+      {announces && <span className="sr-only">{label}</span>}
     </span>
   );
 }

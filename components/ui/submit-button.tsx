@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { MarkLoader } from "@/components/brand/mark-loader";
 
 /**
  * A submit button that shows it is working.
@@ -13,6 +14,9 @@ import { useFormStatus } from "react-dom";
  *
  * Disabling while pending also prevents the double submit that follows from
  * clicking again, which for a create form means two records instead of one.
+ *
+ * The pending indicator is the brand mark rather than a generic ring, so every
+ * wait on the platform looks like the same thing happening.
  */
 export function SubmitButton({
   children,
@@ -38,10 +42,11 @@ export function SubmitButton({
     >
       {pending ? (
         <span className="inline-flex items-center gap-2">
-          <span
-            aria-hidden
-            className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-          />
+          {/* 18px, not the 14px the old ring used: below about 18 the mark's
+              counters close up and it reads as a green smudge rather than as
+              the logo. aria-busy on the button already announces the state, so
+              the loader itself is silent here. */}
+          <MarkLoader size={18} label="" />
           {pendingLabel ?? "Working…"}
         </span>
       ) : (
