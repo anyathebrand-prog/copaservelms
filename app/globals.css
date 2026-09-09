@@ -190,6 +190,38 @@ body {
   100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* The navigation indicator.
+
+   Both pieces start invisible and fade in after 150ms. A prefetched route
+   arrives well inside that, so an instant navigation shows nothing at all —
+   which is the point. An indicator that flashes for one frame on every click
+   reads as a glitch, not as progress. */
+@keyframes nav-progress-in {
+  to { opacity: 1; }
+}
+
+@keyframes nav-progress-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.nav-progress-track,
+.nav-progress-pill {
+  opacity: 0;
+  animation: nav-progress-in 220ms ease 150ms forwards;
+}
+
+.nav-progress-bar {
+  animation: nav-progress-sweep 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The sweep is the only thing carrying "still going", so it is kept rather
+     than frozen — but the pill's mark already pulses, so a static bar would
+     not leave the indicator meaningless either way. */
+  .nav-progress-bar { animation-duration: 1.6s !important; }
+}
+
 /* The first-load cover.
 
    Ink rather than white: the landing hero and the whole portal chrome are ink,
