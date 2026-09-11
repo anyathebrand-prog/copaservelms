@@ -9,6 +9,7 @@ import { VerifyWidget } from "@/components/landing/verify-widget";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
+import { OperatorMark, PartnerLogos } from "@/components/landing/partners";
 import { CONSENT_TEXT } from "@/lib/waitlist";
 import { getSettings } from "@/lib/settings";
 
@@ -270,11 +271,14 @@ export default async function HomePage() {
           </Reveal>
         </Section>
 
-        {/* 9. Trusted Institutions */}
+        {/* 9. Who is behind it, and who uses it. Kept apart deliberately: the
+            operator is not a customer, and one heading covering both would be
+            claiming an endorsement that does not exist yet. */}
         <Section muted eyebrow="Trusted by" title="Institutions we work with">
-          <p className="rounded-3xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-            Partner institution logos appear here once launch partners are confirmed.
-          </p>
+          <div className="space-y-10">
+            <OperatorMark />
+            <PartnerLogos />
+          </div>
         </Section>
 
         {/* 10. FAQ */}
