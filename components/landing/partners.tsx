@@ -18,7 +18,7 @@ export type Partner = {
   name: string;
   /** Path under /public. */
   logo: string;
-  /** Rendered height in px; width follows the artwork's ratio. */
+  /** The artwork's intrinsic size, so the aspect ratio is never guessed. */
   width: number;
   height: number;
   href?: string;
@@ -28,8 +28,10 @@ export type Partner = {
 export const OPERATOR: Partner = {
   name: "BIT Technologies",
   logo: "/brand/partners/bit-technologies.png",
-  width: 260,
-  height: 34,
+  // The artwork's own pixels. Display size comes from CSS; these are here so
+  // the browser reserves the right box and the card does not jump as it loads.
+  width: 549,
+  height: 53,
 };
 
 /** Institutions that actually use CopaServe. Empty until one is confirmed. */
@@ -54,7 +56,12 @@ export function OperatorMark() {
         Built and operated by
       </p>
 
-      <Logo partner={OPERATOR} className="h-8 w-auto sm:h-9" />
+      {/* Sized by width, never by height. A fixed height plus preflight's
+          max-width:100% throws the aspect ratio away as soon as the card gets
+          narrow than the artwork — on a 360px phone this wordmark came out
+          26% too wide for its height. Someone's registered mark is the last
+          thing that should be quietly stretched. */}
+      <Logo partner={OPERATOR} className="h-auto w-full max-w-[300px] object-contain sm:max-w-[360px]" />
 
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
         Business Intelligence Technologies Limited, Lagos — the company behind CopaServe and the
@@ -79,9 +86,11 @@ export function PartnerLogos() {
         <li key={partner.name}>
           {/* Greyscale at rest so a wall of competing brand colours does not
               pull attention off the page's own. */}
+          {/* max-* with auto dimensions, so a wide mark is clamped by width and
+              a tall one by height, and neither is distorted. */}
           <Logo
             partner={partner}
-            className="h-8 w-auto opacity-60 grayscale transition hover:opacity-100 hover:grayscale-0"
+            className="h-auto max-h-8 w-auto max-w-[170px] object-contain opacity-60 grayscale transition hover:opacity-100 hover:grayscale-0"
           />
         </li>
       ))}
