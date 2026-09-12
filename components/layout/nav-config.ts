@@ -104,7 +104,13 @@ export const INSTRUCTOR_NAV: NavGroup[] = [
   },
   {
     label: "Elsewhere",
-    items: [{ href: "/student", label: "Student view", icon: Eye, primary: true }],
+    items: [
+      { href: "/student", label: "Student view", icon: Eye, primary: true },
+      // Account settings live once, in the student area, because everyone has
+      // the STUDENT role. Linking to them from here means an instructor
+      // looking for their password does not have to know that.
+      { href: "/student/profile", label: "My account", icon: User },
+    ],
   },
 ];
 
@@ -148,6 +154,14 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/settings", label: "Settings", icon: Settings },
       { href: "/admin/api-keys", label: "API keys", icon: KeyRound },
       { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
+    ],
+  },
+  {
+    label: "Elsewhere",
+    items: [
+      // /admin/settings is the platform's settings, not the admin's own. An
+      // admin wanting to change their own password was finding nothing.
+      { href: "/student/profile", label: "My account", icon: User },
     ],
   },
 ];

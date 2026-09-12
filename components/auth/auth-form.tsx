@@ -357,6 +357,16 @@ export function AuthForm({
           minLength={8}
         />
 
+        {/* Under the password field, where someone looks when the one they
+            typed did not work. */}
+        {mode === "login" && (
+          <p className="-mt-1 text-right">
+            <Link href="/forgot-password" className="text-sm font-medium text-brand hover:underline">
+              Forgot your password?
+            </Link>
+          </p>
+        )}
+
         {error && (
           <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}

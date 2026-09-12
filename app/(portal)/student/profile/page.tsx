@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/roles";
+import { hasPasswordIdentity } from "@/lib/auth";
 import { listVerifiedFactors } from "@/lib/mfa";
 import { TwoFactorSetup } from "@/components/auth/two-factor-setup";
+import { PasswordChange } from "@/components/auth/password-change";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -17,6 +19,7 @@ export const metadata: Metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const user = await requireUser("/student/profile");
   const factors = await listVerifiedFactors();
+  const hasPassword = await hasPasswordIdentity();
   const profile = await prisma.profile.findUnique({
     where: { userId: user.id },
     select: {
@@ -76,6 +79,10 @@ export default async function ProfilePage() {
           </div>
         </dl>
       </section>
+
+      {/* Password before two-factor: it is the credential everyone has, and
+          the one someone comes to this page to change. */}
+      <PasswordChange email={user.email} hasPassword={hasPassword} />
 
       <TwoFactorSetup factors={factors} />
 

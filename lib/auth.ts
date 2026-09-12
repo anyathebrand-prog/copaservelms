@@ -67,3 +67,24 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
 export function isAdmin(user: CurrentUser): boolean {
   return user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
 }
+
+/**
+ * Does this account actually have a password?
+ *
+ * Someone who signed up with Google has no password identity, so asking them
+ * for their "current password" is asking for something that has never existed.
+ * They get a "set a password" form instead — which is a real feature for them,
+ * since it gives them a way in if they ever lose access to the Google account.
+ *
+ * Identities are read from the auth server rather than inferred from anything
+ * stored locally: they change when a provider is linked or unlinked.
+ */
+export async function hasPasswordIdentity(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+  return (user.identities ?? []).some((identity) => identity.provider === "email");
+}
