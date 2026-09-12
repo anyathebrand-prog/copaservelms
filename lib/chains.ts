@@ -23,6 +23,15 @@ export type Chain = {
   chainId?: number;
   /** Solana only. */
   cluster?: string;
+  /**
+   * CAIP-2 identifier, which is what WalletConnect sessions are scoped by.
+   *
+   * Written out rather than derived. For EVM it is just the chain id, but a
+   * Solana CAIP-2 id is the first 32 characters of the cluster's genesis hash
+   * — not the cluster name — so deriving it would mean inventing it. These
+   * were read from @reown/appkit's own network definitions.
+   */
+  caip2: string;
   testnet: boolean;
   explorerAddress: (address: string) => string;
   explorerTx: (hash: string) => string;
@@ -31,6 +40,7 @@ export type Chain = {
 export const CHAINS: Chain[] = [
   {
     key: "base",
+    caip2: "eip155:8453",
     name: "Base",
     family: "EVM",
     chainId: 8453,
@@ -40,6 +50,7 @@ export const CHAINS: Chain[] = [
   },
   {
     key: "base-sepolia",
+    caip2: "eip155:84532",
     name: "Base Sepolia (testnet)",
     family: "EVM",
     chainId: 84532,
@@ -49,6 +60,7 @@ export const CHAINS: Chain[] = [
   },
   {
     key: "polygon",
+    caip2: "eip155:137",
     name: "Polygon",
     family: "EVM",
     chainId: 137,
@@ -58,6 +70,7 @@ export const CHAINS: Chain[] = [
   },
   {
     key: "polygon-amoy",
+    caip2: "eip155:80002",
     name: "Polygon Amoy (testnet)",
     family: "EVM",
     chainId: 80002,
@@ -67,6 +80,7 @@ export const CHAINS: Chain[] = [
   },
   {
     key: "solana",
+    caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
     name: "Solana",
     family: "SOLANA",
     cluster: "mainnet-beta",
@@ -76,6 +90,7 @@ export const CHAINS: Chain[] = [
   },
   {
     key: "solana-devnet",
+    caip2: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     name: "Solana Devnet",
     family: "SOLANA",
     cluster: "devnet",
@@ -101,4 +116,9 @@ export function chainName(key: string): string {
 /** The chains offered in the interface, mainnets first. */
 export function selectableChains(): Chain[] {
   return [...CHAINS].sort((a, b) => Number(a.testnet) - Number(b.testnet));
+}
+
+/** The CAIP-2 namespace a chain belongs to, e.g. "eip155" or "solana". */
+export function caipNamespace(chain: Chain): string {
+  return chain.caip2.split(":")[0]!;
 }
