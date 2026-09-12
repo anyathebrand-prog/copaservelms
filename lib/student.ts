@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { autoIssueCertificate } from "@/lib/certificates/auto-issue";
 import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
 
 /**
@@ -201,10 +202,17 @@ export async function getCourseForPlayer(userId: string, slug: string) {
               },
             },
           },
-          quizzes: { select: { id: true, title: true, lessonId: true } },
+          quizzes: {
+            select: { id: true, title: true, lessonId: true, passingScore: true, countsTowardCertificate: true },
+          },
+          minQuizScore: true,
         },
       },
       lessonProgress: { select: { lessonId: true, completed: true, lastPositionSeconds: true } },
+      quizAttempts: {
+        where: { status: { in: ["AUTO_GRADED", "GRADED"] } },
+        select: { quizId: true, score: true, maxScore: true },
+      },
       certificate: { select: { id: true, credentialId: true, status: true } },
     },
   });
@@ -213,6 +221,22 @@ export async function getCourseForPlayer(userId: string, slug: string) {
 
   const progressByLesson = new Map(enrollment.lessonProgress.map((p) => [p.lessonId, p]));
 
+  // Best score per quiz, so a quiz already passed stops being listed as
+  // outstanding. Without this the end-of-course panel kept saying "one quiz
+  // still to take" to somebody who had just passed it.
+  const bestByQuiz = new Map<string, number>();
+  for (const attempt of enrollment.quizAttempts) {
+    if (!attempt.maxScore) continue;
+    const percent = Math.round(((attempt.score ?? 0) / attempt.maxScore) * 100);
+    bestByQuiz.set(attempt.quizId, Math.max(bestByQuiz.get(attempt.quizId) ?? 0, percent));
+  }
+
+  const quizzes = enrollment.course.quizzes.map((quiz) => {
+    const best = bestByQuiz.get(quiz.id);
+    const bar = enrollment.course.minQuizScore ?? quiz.passingScore;
+    return { ...quiz, passed: best !== undefined && best >= bar };
+  });
+
   return {
     enrollmentId: enrollment.id,
     status: enrollment.status,
@@ -220,7 +244,7 @@ export async function getCourseForPlayer(userId: string, slug: string) {
     // Present once issued, so the end of the last lesson can link to it rather
     // than leaving the learner to guess whether anything happened.
     certificate: enrollment.certificate,
-    course: enrollment.course,
+    course: { ...enrollment.course, quizzes },
     modules: enrollment.course.modules.map((module) => ({
       ...module,
       lessons: module.lessons.map((lesson) => ({
@@ -380,7 +404,15 @@ export async function markLessonComplete(userId: string, lessonId: string) {
   // keeps them queued for a person, which is the point of the setting.
   const certificate = finished ? await autoIssueCertificate(enrollment.id) : null;
 
-  return { ok: true as const, progressPercent, finished, badges, certificate };
+  // What the learner should be sent to now that the reading is done. Finishing
+  // the lessons used to leave them on the last page with a panel of links; the
+  // assessment is the next actual step, so it is named here rather than left
+  // for them to find.
+  const nextQuizId = finished
+    ? await outstandingAssessment(lesson.module.courseId, enrollment.id)
+    : null;
+
+  return { ok: true as const, progressPercent, finished, badges, certificate, nextQuizId };
 }
 
 function formatName(
@@ -391,35 +423,39 @@ function formatName(
 }
 
 /**
- * Issue a certificate for a just-completed enrolment, if it is due.
+ * The certificate-bearing quiz this learner still has to pass, if any.
  *
- * Never throws. A certificate that fails to render must not undo the lesson
- * the learner just completed — their progress is real either way, and an
- * administrator can still issue by hand from the certificates page.
- *
- * Imported lazily because the issuance path pulls in PDF rendering, storage and
- * webhooks, none of which belong in the module graph of every page that reads
- * a learner's progress.
+ * Quizzes with no questions are ignored: an instructor part-way through
+ * building one should not become a dead end for everybody on the course.
  */
-async function autoIssueCertificate(
+export async function outstandingAssessment(
+  courseId: string,
   enrollmentId: string,
-): Promise<{ certificateId: string; credentialId: string } | null> {
-  try {
-    const { evaluateEligibility } = await import("@/lib/certificates/eligibility");
-    const eligibility = await evaluateEligibility(enrollmentId);
+): Promise<string | null> {
+  const [quizzes, attempts, course] = await Promise.all([
+    prisma.quiz.findMany({
+      where: { courseId, countsTowardCertificate: true, questions: { some: {} } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, passingScore: true },
+    }),
+    prisma.quizAttempt.findMany({
+      where: { enrollmentId, status: { in: ["AUTO_GRADED", "GRADED"] } },
+      select: { quizId: true, score: true, maxScore: true },
+    }),
+    prisma.course.findUnique({ where: { id: courseId }, select: { minQuizScore: true } }),
+  ]);
 
-    if (!eligibility || eligibility.alreadyIssued) return null;
-    // awaitingApproval means the only thing missing is a human, and that human
-    // is the whole reason the course asked for approval.
-    if (!eligibility.eligible || eligibility.awaitingApproval) return null;
-
-    const { issueCertificate } = await import("@/lib/certificates/issue");
-    const result = await issueCertificate(enrollmentId, {});
-
-    if (!result.ok) return null;
-    return { certificateId: result.certificateId, credentialId: result.credentialId };
-  } catch (cause) {
-    console.error("[certificates] automatic issuance failed", cause);
-    return null;
+  const best = new Map<string, number>();
+  for (const attempt of attempts) {
+    if (!attempt.maxScore) continue;
+    const percent = Math.round(((attempt.score ?? 0) / attempt.maxScore) * 100);
+    best.set(attempt.quizId, Math.max(best.get(attempt.quizId) ?? 0, percent));
   }
+
+  const unpassed = quizzes.find((quiz) => {
+    const score = best.get(quiz.id);
+    return score === undefined || score < (course?.minQuizScore ?? quiz.passingScore);
+  });
+
+  return unpassed?.id ?? null;
 }

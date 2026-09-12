@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@/app/generated/prisma/client";
 import { evaluateBadges, recordActivity, XP } from "@/lib/gamification";
 import type { QuestionType } from "@/app/generated/prisma/enums";
+import { autoIssueCertificate } from "@/lib/certificates/auto-issue";
 
 /**
  * Quiz delivery and grading (PRD §9.5).
@@ -112,6 +113,8 @@ export type GradedAttempt = {
   maxScore: number;
   percentage: number;
   passed: boolean | null;
+  /** Set when this attempt was the thing that earned the certificate. */
+  certificate?: { certificateId: string; credentialId: string } | null;
   status: "AUTO_GRADED" | "PENDING_MANUAL_GRADING";
   pendingManualCount: number;
 };
@@ -218,6 +221,15 @@ export async function gradeAttempt(
   await recordActivity(userId, attempt.passed ? XP.QUIZ_PASSED : 0).catch(() => {});
   await evaluateBadges(userId).catch(() => {});
 
+  // Certificates are evaluated here for the same reason badges are: a learner
+  // earns one by completing the last outstanding condition, and on a course
+  // that assesses, that condition is this quiz rather than the last lesson.
+  // Issuing only from markLessonComplete meant anyone who read the lessons
+  // first and sat the quiz afterwards met every condition and got nothing.
+  const certificate = attempt.passed
+    ? await autoIssueCertificate(enrollment.id).catch(() => null)
+    : null;
+
   return {
     ok: true,
     result: {
@@ -228,6 +240,7 @@ export async function gradeAttempt(
       passed: attempt.passed,
       status,
       pendingManualCount,
+      certificate,
     },
   };
 }

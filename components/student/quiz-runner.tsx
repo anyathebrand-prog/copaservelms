@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Award } from "lucide-react";
 
 /**
  * Quiz runner (PRD §9.5).
@@ -38,6 +39,8 @@ type Result = {
   passed: boolean | null;
   status: string;
   pendingManualCount: number;
+  /** Present when this attempt was the thing that earned the certificate. */
+  certificate?: { certificateId: string; credentialId: string } | null;
 };
 
 export function QuizRunner({ quiz }: { quiz: Quiz }) {
@@ -98,9 +101,28 @@ export function QuizRunner({ quiz }: { quiz: Quiz }) {
           </p>
         )}
 
+        {/* The score stays on screen rather than redirecting: somebody who has
+            just been assessed should see how they did. The certificate is the
+            prominent next step, not a link they have to go looking for. */}
+        {result.certificate ? (
+          <div className="mt-6 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Your certificate has been issued —{" "}
+              <span className="font-mono text-xs">{result.certificate.credentialId}</span>
+            </p>
+            <Link
+              href="/student/certificates"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              <Award className="size-4" />
+              View and download your certificate
+            </Link>
+          </div>
+        ) : null}
+
         <Link
           href="/student/quizzes"
-          className="mt-6 inline-block rounded-lg border border-border px-5 py-2.5 text-sm font-medium hover:bg-surface-muted"
+          className="mt-6 block text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           Back to quizzes
         </Link>

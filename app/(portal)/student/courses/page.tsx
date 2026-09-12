@@ -100,11 +100,22 @@ export default async function MyCoursesPage({
                 </p>
               </div>
 
+              {/* A course at 100% is not something to "continue". Saying so is
+                  also the honest label for the state: the lessons are done,
+                  whatever remains is the assessment. */}
               <Link
                 href={`/student/courses/${course.slug}`}
-                className="mt-4 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                className={`mt-4 inline-block rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  course.progressPercent >= 100
+                    ? "border border-brand/30 bg-brand-pale text-brand hover:bg-brand-pale/70"
+                    : "bg-brand text-white hover:brightness-110"
+                }`}
               >
-                {course.progressPercent > 0 ? "Continue Learning" : "Start Course"}
+                {course.progressPercent >= 100
+                  ? "Completed"
+                  : course.progressPercent > 0
+                    ? "Continue Learning"
+                    : "Start Course"}
               </Link>
             </article>
           ))}

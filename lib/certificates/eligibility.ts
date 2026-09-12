@@ -66,7 +66,7 @@ export async function evaluateEligibility(enrollmentId: string): Promise<Eligibi
 
   const { course, userId } = enrollment;
 
-  const [totalLessons, completedLessons, attempts, requiredAssignments, submittedAssignments, liveClasses, attended] =
+  const [totalLessons, completedLessons, attempts, certificateQuizzes, requiredAssignments, submittedAssignments, liveClasses, attended] =
     await Promise.all([
       prisma.lesson.count({ where: { module: { courseId: course.id } } }),
       prisma.lessonProgress.count({ where: { enrollmentId, completed: true } }),
@@ -77,6 +77,13 @@ export async function evaluateEligibility(enrollmentId: string): Promise<Eligibi
           quiz: { countsTowardCertificate: true },
         },
         select: { quizId: true, score: true, maxScore: true },
+      }),
+      prisma.quiz.findMany({
+        // Only quizzes that actually assess something. A quiz with no
+        // questions cannot be passed or failed, so treating it as a gate would
+        // block every learner on a course an instructor had started building.
+        where: { courseId: course.id, countsTowardCertificate: true, questions: { some: {} } },
+        select: { id: true, passingScore: true },
       }),
       prisma.assignment.count({ where: { courseId: course.id, isRequiredForCertificate: true } }),
       prisma.submission.count({
@@ -106,6 +113,15 @@ export async function evaluateEligibility(enrollmentId: string): Promise<Eligibi
       ? null
       : Math.round(quizScores.reduce((sum, s) => sum + s, 0) / quizScores.length);
 
+  // A quiz is passed on its own passing score, unless the course overrides the
+  // bar for certification with minQuizScore. Best attempt counts, so a failed
+  // first try does not permanently bar someone who later passed.
+  const quizzesPassed = certificateQuizzes.filter((quiz) => {
+    const best = bestByQuiz.get(quiz.id);
+    if (best === undefined) return false;
+    return best >= (course.minQuizScore ?? quiz.passingScore);
+  }).length;
+
   const attendanceRate = liveClasses === 0 ? null : Math.round((attended / liveClasses) * 100);
 
   const conditions: Condition[] = [
@@ -118,14 +134,20 @@ export async function evaluateEligibility(enrollmentId: string): Promise<Eligibi
     },
     {
       id: "quizzes",
-      label: `Minimum quiz score${course.minQuizScore ? ` of ${course.minQuizScore}%` : ""}`,
-      applicable: course.minQuizScore != null,
-      // A course that demands a score but has no graded attempt is not met —
-      // absence of a quiz result is not a pass.
-      met:
-        course.minQuizScore == null ||
-        (averageQuiz !== null && averageQuiz >= course.minQuizScore),
-      detail: averageQuiz === null ? "no graded quizzes yet" : `${averageQuiz}% average`,
+      label: "Assessment passed",
+      // Applicable whenever the course offers a certificate at all. It used to
+      // hang off course.minQuizScore, which is optional and was null on six of
+      // the eight published courses — so a course with a real, certificate-
+      // bearing quiz reported "not applicable" and issued certificates on
+      // finished lessons alone. A certificate is a claim that someone was
+      // assessed; reading a lesson is not an assessment.
+      applicable: course.certificateEnabled,
+      met: certificateQuizzes.length > 0 && quizzesPassed === certificateQuizzes.length,
+      detail:
+        certificateQuizzes.length === 0
+          ? "this course has no assessment yet"
+          : `${quizzesPassed}/${certificateQuizzes.length} passed` +
+            (averageQuiz === null ? "" : ` · ${averageQuiz}% average`),
     },
     {
       id: "assignments",

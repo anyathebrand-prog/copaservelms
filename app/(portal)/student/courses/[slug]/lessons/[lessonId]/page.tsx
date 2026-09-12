@@ -41,7 +41,11 @@ export default async function LessonPage({
   // The course is finished when every lesson is, which is the moment the
   // player has to stop being a list of lessons and say what happens next.
   const courseFinished = lessons.every((item) => item.completed);
-  const remainingQuizzes = data.course.quizzes.filter((quiz) => quiz.lessonId === null);
+  // Only what is actually left. Listing a quiz the learner has already passed
+  // as "still to take" is worse than listing nothing.
+  const remainingQuizzes = data.course.quizzes.filter(
+    (quiz) => quiz.lessonId === null && !quiz.passed,
+  );
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_300px]">

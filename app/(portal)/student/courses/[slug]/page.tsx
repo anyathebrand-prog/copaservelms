@@ -53,7 +53,11 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
             href={`/student/courses/${slug}/lessons/${nextLesson.id}`}
             className="mt-6 inline-block rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
           >
-            {data.progressPercent > 0 ? "Continue Learning" : "Start Course"}
+            {data.progressPercent >= 100
+              ? "Review course"
+              : data.progressPercent > 0
+                ? "Continue Learning"
+                : "Start Course"}
           </Link>
         )}
       </header>

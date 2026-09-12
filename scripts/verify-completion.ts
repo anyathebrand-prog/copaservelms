@@ -11,11 +11,16 @@
  * are the same event — except where a course deliberately asks a human to
  * approve it, which is the entire point of that setting.
  *
+ * Updated when the rule changed: finishing the lessons no longer earns a
+ * certificate on a course that assesses. The passing attempt is what earns it,
+ * so that is the event this now expects to produce one.
+ *
  *   npx tsx --env-file=.env scripts/verify-completion.ts
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { markLessonComplete } from "../lib/student";
+import { gradeAttempt } from "../lib/quizzes";
 import { evaluateEligibility } from "../lib/certificates/eligibility";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -30,7 +35,30 @@ function check(name: string, pass: boolean, detail: string) {
 }
 
 async function cleanup() {
+  // The PDF as well as the row. Deleting only the row leaves the file behind
+  // in the bucket, and a verification script that litters storage every run is
+  // a slow leak nobody notices.
+  const issued = await prisma.certificate.findMany({
+    where: { userId: { in: users } },
+    select: { certificateNumber: true, userId: true },
+  });
+
+  if (issued.length > 0) {
+    try {
+      const { getStorage } = await import("../lib/storage");
+      const storage = getStorage();
+      for (const certificate of issued) {
+        await storage
+          .remove(`${certificate.userId}/${certificate.certificateNumber}.pdf`)
+          .catch(() => undefined);
+      }
+    } catch {
+      // Storage not configured in this environment; the rows still go.
+    }
+  }
+
   await prisma.certificate.deleteMany({ where: { userId: { in: users } } });
+  await prisma.quizAttempt.deleteMany({ where: { userId: { in: users } } });
   await prisma.enrollment.deleteMany({ where: { userId: { in: users } } });
   await prisma.course.deleteMany({ where: { id: { in: courses } } });
   await prisma.auditLog.deleteMany({ where: { actorId: { in: users } } });
@@ -65,12 +93,40 @@ async function makeCourse(instructorId: string, requiresAdminApproval: boolean) 
           },
         },
       },
+      // A course that certifies has to assess, so the fixture does too.
+      quizzes: {
+        create: {
+          title: "Check",
+          passingScore: 70,
+          countsTowardCertificate: true,
+          questions: {
+            create: {
+              type: "TRUE_FALSE",
+              prompt: "Consent can be withdrawn.",
+              options: [],
+              correctAnswer: true,
+              points: 10,
+              position: 1,
+            },
+          },
+        },
+      },
     },
-    select: { id: true, modules: { select: { lessons: { select: { id: true }, orderBy: { position: "asc" } } } } },
+    select: {
+      id: true,
+      modules: { select: { lessons: { select: { id: true }, orderBy: { position: "asc" } } } },
+      quizzes: { select: { id: true, questions: { select: { id: true } } } },
+    },
   });
 
   courses.push(course.id);
-  return { id: course.id, lessons: course.modules[0]!.lessons.map((lesson) => lesson.id) };
+  const quiz = course.quizzes[0]!;
+  return {
+    id: course.id,
+    lessons: course.modules[0]!.lessons.map((lesson) => lesson.id),
+    quizId: quiz.id,
+    questionId: quiz.questions[0]!.id,
+  };
 }
 
 async function main() {
@@ -109,9 +165,23 @@ async function main() {
   check("the enrolment is marked completed", after.status === "COMPLETED", after.status);
   check("completion is timestamped", after.completedAt !== null, `${after.completedAt !== null}`);
 
-  check("a certificate is issued automatically",
-    second.ok && second.certificate !== null,
-    second.ok && second.certificate ? second.certificate.credentialId : "none");
+  check("finishing the lessons does not issue a certificate on its own",
+    second.ok && second.certificate === null,
+    second.ok && second.certificate ? "issued!" : "withheld");
+  check("and the learner is pointed at the assessment",
+    second.ok && second.nextQuizId === open.quizId,
+    second.ok ? String(second.nextQuizId) : "failed");
+
+  // Passing is what earns it.
+  const pass = await gradeAttempt(prisma, open.quizId, learner.id, [
+    { questionId: open.questionId, response: true },
+  ]);
+  check("the passing attempt is graded as a pass",
+    pass.ok && pass.result.passed === true,
+    pass.ok ? `${pass.result.percentage}%` : "failed");
+  check("a certificate is issued on passing",
+    pass.ok && Boolean(pass.result.certificate),
+    pass.ok && pass.result.certificate ? pass.result.certificate.credentialId : "none");
 
   const certificate = await prisma.certificate.findFirst({ where: { enrollmentId: enrolment.id } });
   check("the certificate exists on the enrolment", certificate !== null,
@@ -125,6 +195,9 @@ async function main() {
   const repeat = await markLessonComplete(learner.id, open.lessons[1]!);
   check("re-completing a lesson does not issue a second certificate",
     repeat.ok && repeat.certificate === null, "none");
+  check("and no assessment is left outstanding",
+    repeat.ok && repeat.nextQuizId === null,
+    repeat.ok ? String(repeat.nextQuizId) : "failed");
 
   const count = await prisma.certificate.count({ where: { enrollmentId: enrolment.id } });
   check("exactly one certificate exists for the enrolment", count === 1, `${count}`);
@@ -138,11 +211,16 @@ async function main() {
 
   await markLessonComplete(learner.id, gated.lessons[0]!);
   const gatedFinish = await markLessonComplete(learner.id, gated.lessons[1]!);
+  const gatedPass = await gradeAttempt(prisma, gated.quizId, learner.id, [
+    { questionId: gated.questionId, response: true },
+  ]);
 
   check("an approval-gated course still completes",
     gatedFinish.ok && gatedFinish.finished === true, "finished");
+  check("its assessment can still be passed",
+    gatedPass.ok && gatedPass.result.passed === true, "passed");
   check("but no certificate is issued without the approval",
-    gatedFinish.ok && gatedFinish.certificate === null, "withheld");
+    gatedPass.ok && !gatedPass.result.certificate, "withheld");
 
   const gatedEligibility = await evaluateEligibility(gatedEnrolment.id);
   check("it is reported as awaiting approval rather than as ineligible",
