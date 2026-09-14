@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 const PROVIDERS: Record<string, PaymentProvider> = {
   paystack: "PAYSTACK",
   flutterwave: "FLUTTERWAVE",
+  kora: "KORA",
 };
 
 export async function POST(

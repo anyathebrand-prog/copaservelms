@@ -121,6 +121,7 @@ enum WalletProvider {
 enum PaymentProvider {
   PAYSTACK
   FLUTTERWAVE
+  KORA
   MANUAL
 }
 

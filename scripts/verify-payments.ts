@@ -133,6 +133,31 @@ async function main() {
     paystack.parseWebhook(body)?.reference === "CS-ABC", `${paystack.parseWebhook(body)?.reference}`);
   check("Paystack ignores an unparseable body", paystack.parseWebhook("not json") === null, "null");
 
+  // Kora signs only the data object, where Paystack signs the whole body.
+  // These two checks exist to catch the exact mistake of copying the driver
+  // above: a Paystack-style signature must be refused, and a Kora-style one
+  // accepted.
+  const kora = createDriverForTesting("KORA", "kora-secret");
+  const koraBody = JSON.stringify({
+    event: "charge.success",
+    data: { reference: "CS-KORA-1", amount: "2000.00", status: "success", currency: "NGN" },
+  });
+  const dataOnly = JSON.stringify(JSON.parse(koraBody).data);
+  const koraSig = createHmac("sha256", "kora-secret").update(dataOnly).digest("hex");
+  const wholeBodySig = createHmac("sha256", "kora-secret").update(koraBody).digest("hex");
+
+  check("Kora accepts a signature over the data object",
+    kora.verifySignature(koraBody, koraSig), "accepted");
+  check("Kora rejects a signature over the whole body",
+    !kora.verifySignature(koraBody, wholeBodySig), "rejected");
+  check("Kora rejects a missing signature", !kora.verifySignature(koraBody, null), "rejected");
+  check("Kora rejects a tampered amount",
+    !kora.verifySignature(koraBody.replace("2000.00", "1.00"), koraSig), "rejected");
+  check("Kora rejects a body with no data object",
+    !kora.verifySignature(JSON.stringify({ event: "charge.success" }), koraSig), "rejected");
+  check("Kora extracts the reference",
+    kora.parseWebhook(koraBody)?.reference === "CS-KORA-1", "CS-KORA-1");
+
   const flutterwave = createDriverForTesting("FLUTTERWAVE", "sk_live", "my-webhook-hash");
   check("Flutterwave accepts its configured hash",
     flutterwave.verifySignature("{}", "my-webhook-hash"), "accepted");

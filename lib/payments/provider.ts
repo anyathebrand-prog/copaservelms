@@ -226,6 +226,135 @@ class FlutterwaveDriver implements PaymentDriver {
   }
 }
 
+/**
+ * Kora (formerly Korapay).
+ *
+ * Two things here differ from the drivers above in ways that fail silently if
+ * got wrong, so both were read out of Kora's documentation rather than
+ * assumed.
+ *
+ * Amounts are in the major unit. The docs never say so in words, but the
+ * verify endpoint answers with "amount": "2000.00" — a two-decimal string no
+ * minor-unit API would return. Sending kobo to an API expecting naira would
+ * charge a learner a hundred times the price, which is the single worst bug
+ * this file could contain.
+ *
+ * The webhook signature covers only the `data` object, not the whole body.
+ * Paystack signs the entire payload and Flutterwave sends a static hash, so
+ * the shape of this check is different from both of its neighbours: the body
+ * is parsed, `data` is re-serialised, and that is what gets hashed.
+ */
+class KoraDriver implements PaymentDriver {
+  readonly id = "KORA" as const;
+
+  constructor(private secretKey: string) {}
+
+  async createCheckout(request: CheckoutRequest) {
+    const response = await fetch("https://api.korapay.com/merchant/api/v1/charges/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reference: request.reference,
+        // Major units, unlike Paystack. See the note above the class.
+        amount: request.amountMinor / 100,
+        currency: request.currency,
+        customer: { email: request.email },
+        redirect_url: request.callbackUrl,
+        metadata: request.metadata,
+      }),
+    });
+
+    const body = (await response.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: { checkout_url?: string };
+    };
+
+    if (!response.ok || !body.status || !body.data?.checkout_url) {
+      throw new Error(`Kora checkout failed: ${body.message ?? response.statusText}`);
+    }
+
+    return { checkoutUrl: body.data.checkout_url };
+  }
+
+  async verify(reference: string): Promise<VerifiedPayment> {
+    const response = await fetch(
+      `https://api.korapay.com/merchant/api/v1/charges/${encodeURIComponent(reference)}`,
+      { headers: { Authorization: `Bearer ${this.secretKey}` } },
+    );
+
+    const body = (await response.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: {
+        reference?: string;
+        status?: string;
+        amount?: string | number;
+        amount_paid?: string | number;
+        currency?: string;
+        paid_at?: string;
+      };
+    };
+
+    if (!response.ok || !body.status || !body.data) {
+      throw new Error(`Kora verify failed: ${body.message ?? response.statusText}`);
+    }
+
+    // amount_paid rather than amount: on a failed charge the first is 0 while
+    // the second still shows what was asked for, and reporting the asking
+    // price as paid would walk straight past the underpayment check.
+    const paid = body.data.amount_paid ?? body.data.amount ?? 0;
+
+    return {
+      reference,
+      // Back to kobo at the boundary, so nothing above this file deals in majors.
+      amountMinor: Math.round(Number(paid) * 100),
+      currency: body.data.currency ?? "NGN",
+      status:
+        body.data.status === "success"
+          ? "SUCCESSFUL"
+          : body.data.status === "failed" || body.data.status === "expired"
+            ? "FAILED"
+            : "PENDING",
+      providerReference: body.data.reference ?? null,
+      paidAt: body.data.paid_at ? new Date(body.data.paid_at) : null,
+      raw: body.data,
+    };
+  }
+
+  verifySignature(rawBody: string, signature: string | null): boolean {
+    if (!signature) return false;
+
+    // Only the data object is signed. Re-serialising what was parsed is what
+    // Kora's own examples do; it matches because JSON.parse preserves key
+    // order and JSON.stringify emits the compact form they signed.
+    let payload: string;
+    try {
+      const parsed = JSON.parse(rawBody) as { data?: unknown };
+      if (parsed.data === undefined) return false;
+      payload = JSON.stringify(parsed.data);
+    } catch {
+      return false;
+    }
+
+    const expected = createHmac("sha256", this.secretKey).update(payload).digest("hex");
+    return safeEqual(expected, signature);
+  }
+
+  parseWebhook(rawBody: string) {
+    try {
+      const body = JSON.parse(rawBody) as { event?: string; data?: { reference?: string } };
+      if (!body.data?.reference) return null;
+      return { reference: body.data.reference, event: body.event ?? "unknown" };
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function getPaymentDriver(provider: PaymentProvider): PaymentDriver {
   if (provider === "PAYSTACK") {
     const key = process.env.PAYSTACK_SECRET_KEY;
@@ -239,6 +368,12 @@ export function getPaymentDriver(provider: PaymentProvider): PaymentDriver {
     return new FlutterwaveDriver(key, process.env.FLUTTERWAVE_WEBHOOK_HASH ?? "");
   }
 
+  if (provider === "KORA") {
+    const key = process.env.KORA_SECRET_KEY;
+    if (!key) throw new Error("Kora is not configured. Set KORA_SECRET_KEY.");
+    return new KoraDriver(key);
+  }
+
   throw new Error(`No driver for payment provider ${provider}.`);
 }
 
@@ -247,6 +382,7 @@ export function availableProviders(): PaymentProvider[] {
   const providers: PaymentProvider[] = [];
   if (process.env.PAYSTACK_SECRET_KEY) providers.push("PAYSTACK");
   if (process.env.FLUTTERWAVE_SECRET_KEY) providers.push("FLUTTERWAVE");
+  if (process.env.KORA_SECRET_KEY) providers.push("KORA");
   return providers;
 }
 
@@ -256,7 +392,7 @@ export function createDriverForTesting(
   secretKey: string,
   webhookHash = "",
 ): PaymentDriver {
-  return provider === "PAYSTACK"
-    ? new PaystackDriver(secretKey)
-    : new FlutterwaveDriver(secretKey, webhookHash);
+  if (provider === "PAYSTACK") return new PaystackDriver(secretKey);
+  if (provider === "KORA") return new KoraDriver(secretKey);
+  return new FlutterwaveDriver(secretKey, webhookHash);
 }
