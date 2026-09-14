@@ -18,12 +18,24 @@ export interface StorageDriver {
   upload(key: string, body: Uint8Array, contentType: string): Promise<StoredObject>;
   remove(key: string): Promise<void>;
   signedUrl(key: string, expiresInSeconds: number): Promise<string>;
+  /** A URL that does not expire. Only meaningful on a public bucket. */
+  publicUrl(key: string): string;
 }
 
 // `||` not `??`: an env var set to an empty string is a normal way to unset
 // one, and ?? would pass "" through as the bucket name, producing an opaque
 // "Invalid path specified in request URL" from the storage API.
 export const CERTIFICATE_BUCKET = process.env.SUPABASE_CERTIFICATE_BUCKET || "certificates";
+
+/**
+ * Course banners, and anything else meant to be seen by anyone.
+ *
+ * A separate, public bucket on purpose. Certificates live in a private one and
+ * are handed out as signed URLs that expire after a week — correct for a
+ * document only its owner should read, and quietly wrong for a picture stored
+ * in a database column, which would simply stop loading seven days later.
+ */
+export const COURSE_MEDIA_BUCKET = process.env.SUPABASE_COURSE_MEDIA_BUCKET || "course-media";
 
 /**
  * Supabase Storage driver.
@@ -35,7 +47,13 @@ export const CERTIFICATE_BUCKET = process.env.SUPABASE_CERTIFICATE_BUCKET || "ce
 class SupabaseStorageDriver implements StorageDriver {
   private client;
 
-  constructor(url: string, serviceRoleKey: string, private bucket: string) {
+  constructor(
+    url: string,
+    serviceRoleKey: string,
+    private bucket: string,
+    /** Public buckets hand back a permanent URL instead of a signed one. */
+    private isPublic = false,
+  ) {
     this.client = createClient(url, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -50,7 +68,10 @@ class SupabaseStorageDriver implements StorageDriver {
 
     if (error) throw new Error(`Storage upload failed for ${key}: ${error.message}`);
 
-    return { key, url: await this.signedUrl(key, 60 * 60 * 24 * 7) };
+    return {
+      key,
+      url: this.isPublic ? this.publicUrl(key) : await this.signedUrl(key, 60 * 60 * 24 * 7),
+    };
   }
 
   async remove(key: string): Promise<void> {
@@ -65,6 +86,10 @@ class SupabaseStorageDriver implements StorageDriver {
 
     if (error || !data) throw new Error(`Could not sign URL for ${key}: ${error?.message}`);
     return data.signedUrl;
+  }
+
+  publicUrl(key: string): string {
+    return this.client.storage.from(this.bucket).getPublicUrl(key).data.publicUrl;
   }
 }
 
@@ -93,6 +118,9 @@ class UnconfiguredStorageDriver implements StorageDriver {
   async signedUrl(): Promise<string> {
     this.fail();
   }
+  publicUrl(): string {
+    this.fail();
+  }
 }
 
 export function getStorage(bucket = CERTIFICATE_BUCKET): StorageDriver {
@@ -102,6 +130,16 @@ export function getStorage(bucket = CERTIFICATE_BUCKET): StorageDriver {
   if (!url || !serviceKey) return new UnconfiguredStorageDriver();
 
   return new SupabaseStorageDriver(url, serviceKey, bucket);
+}
+
+/** Storage for files the whole web is meant to be able to load. */
+export function getPublicStorage(bucket = COURSE_MEDIA_BUCKET): StorageDriver {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) return new UnconfiguredStorageDriver();
+
+  return new SupabaseStorageDriver(url, serviceKey, bucket, true);
 }
 
 export function isStorageConfigured(): boolean {

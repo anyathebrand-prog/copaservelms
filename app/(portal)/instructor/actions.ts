@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { clearCourseBanner, setCourseBanner } from "@/lib/course-media";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -90,6 +91,46 @@ export async function updateCourseAction(formData: FormData): Promise<void> {
 
   if (!result.ok) explode(result.error);
   revalidatePath(`/instructor/courses/${courseId}`);
+}
+
+/**
+ * Replace or remove a course banner.
+ *
+ * The file arrives in the form; the course id does too, so ownership is
+ * re-checked server-side inside setCourseBanner rather than trusted from the
+ * request. Revalidates the public catalogue as well as the editor, because the
+ * banner is the one course field a visitor sees before they click anything.
+ */
+export async function courseBannerAction(formData: FormData): Promise<void> {
+  const user = await requireInstructor();
+  const courseId = String(formData.get("courseId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const remove = formData.get("intent") === "remove";
+  const file = formData.get("banner");
+
+  const result = remove
+    ? await clearCourseBanner(courseId, user.id, user.roles)
+    : file instanceof File && file.size > 0
+      ? await setCourseBanner(courseId, file, user.id, user.roles)
+      : { ok: false as const, error: "INVALID" as const, detail: "Choose an image first." };
+
+  if (!result.ok) {
+    // The detail is the useful half — "Keep the image under 4MB" tells the
+    // instructor what to do, where "That input is not valid" does not.
+    throw new Error(
+      result.detail ??
+        (result.error === "FORBIDDEN"
+          ? "You cannot change that course."
+          : result.error === "NOT_FOUND"
+            ? "That course no longer exists."
+            : "That image could not be used."),
+    );
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath("/courses");
+  if (slug) revalidatePath(`/courses/${slug}`);
 }
 
 export async function setStatusAction(formData: FormData): Promise<void> {

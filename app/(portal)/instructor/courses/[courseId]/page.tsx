@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { CourseCover } from "@/components/course/course-cover";
+import { BANNER_ACCEPT, BANNER_MAX_MB } from "@/lib/course-media";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +10,7 @@ import { getCourseForEditing } from "@/lib/instructor";
 import { QuizzesSection } from "@/components/instructor/quizzes-section";
 import { CurriculumEditor } from "@/components/instructor/curriculum-editor";
 import { StatusBadge } from "@/components/instructor/status-badge";
-import { setStatusAction, updateCourseAction } from "../../actions";
+import { courseBannerAction, setStatusAction, updateCourseAction } from "../../actions";
 
 export const metadata: Metadata = { title: "Edit course" };
 
@@ -121,6 +123,68 @@ export default async function EditCoursePage({
           Publication is an admin action.
         </p>
       )}
+
+      <section className="rounded-2xl border border-border bg-surface p-6">
+        <h2 className="font-display text-xl font-semibold">Banner</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The picture on the course card and at the top of the course page. Landscape works best;
+          it is cropped to 16:9 and re-saved at {BANNER_MAX_MB}MB or less.
+        </p>
+
+        <div className="mt-4 grid gap-5 sm:grid-cols-[minmax(0,320px)_1fr] sm:items-start">
+          <CourseCover
+            title={course.title}
+            slug={course.slug}
+            thumbnailUrl={course.thumbnailUrl}
+            category={course.category?.name ?? null}
+            className="rounded-xl border border-border"
+            sizes="320px"
+          />
+
+          <div className="space-y-3">
+            {!course.thumbnailUrl && (
+              <p className="text-sm text-muted-foreground">
+                No banner yet, so the course shows the generated cover on the left. Upload one to
+                replace it.
+              </p>
+            )}
+
+            {/* encType matters: without it the file arrives as a filename
+                string and the upload silently does nothing. */}
+            <form action={courseBannerAction} encType="multipart/form-data" className="space-y-3">
+              <input type="hidden" name="courseId" value={course.id} />
+              <input type="hidden" name="slug" value={course.slug} />
+              <input
+                type="file"
+                name="banner"
+                accept={BANNER_ACCEPT}
+                required
+                className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:brightness-110"
+              />
+              <SubmitButton
+                pendingLabel="Uploading…"
+                className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                Save banner
+              </SubmitButton>
+            </form>
+
+            {course.thumbnailUrl && (
+              <form action={courseBannerAction}>
+                <input type="hidden" name="courseId" value={course.id} />
+                <input type="hidden" name="slug" value={course.slug} />
+                <input type="hidden" name="intent" value="remove" />
+                <SubmitButton
+                  pendingLabel="Removing…"
+                  className="text-sm font-medium text-danger hover:underline"
+                >
+                  Remove banner
+                </SubmitButton>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-6">
         <h2 className="font-display text-xl font-semibold">Details</h2>

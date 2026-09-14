@@ -8,6 +8,7 @@ import { availableProviders } from "@/lib/payments/provider";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { enrolAction } from "../actions";
+import { CourseCover } from "@/components/course/course-cover";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,8 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       priceMinor: true,
       currency: true,
       estimatedMinutes: true,
+      slug: true,
+      thumbnailUrl: true,
       category: { select: { name: true } },
       instructor: {
         select: { profile: { select: { firstName: true, lastName: true, displayName: true, bio: true } } },
@@ -98,6 +101,18 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               </p>
             )}
             <h1 className="mt-2 font-display text-4xl font-bold tracking-tight">{course.title}</h1>
+
+            {/* Below the title rather than above it: a visitor arriving from
+                search needs to read what this is before they look at it. */}
+            <CourseCover
+              title={course.title}
+              slug={course.slug}
+              thumbnailUrl={course.thumbnailUrl}
+              category={course.category?.name ?? null}
+              priority
+              sizes="(min-width: 1024px) 700px, 100vw"
+              className="mt-6 rounded-2xl border border-border"
+            />
             {course.subtitle && <p className="mt-3 text-lg text-muted-foreground">{course.subtitle}</p>}
 
             <p className="mt-4 text-sm text-muted-foreground">

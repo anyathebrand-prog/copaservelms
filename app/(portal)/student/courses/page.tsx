@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
 import { getEnrolledCourses } from "@/lib/student";
 import { ProgressBar } from "@/components/student/progress-bar";
+import { CourseCover } from "@/components/course/course-cover";
 
 export const metadata: Metadata = { title: "My Courses" };
 
@@ -81,7 +82,19 @@ export default async function MyCoursesPage({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((course) => (
-            <article key={course.enrollmentId} className="rounded-2xl border border-border bg-surface p-5">
+            <article
+              key={course.enrollmentId}
+              className="overflow-hidden rounded-2xl border border-border bg-surface"
+            >
+              <CourseCover
+                title={course.title}
+                slug={course.slug}
+                thumbnailUrl={course.thumbnailUrl}
+                category={course.categoryName}
+                sizes="(min-width: 640px) 50vw, 100vw"
+              />
+
+              <div className="p-5">
               {course.categoryName && (
                 <p className="text-xs font-semibold uppercase tracking-wide text-brand">
                   {course.categoryName}
@@ -117,6 +130,7 @@ export default async function MyCoursesPage({
                     ? "Continue Learning"
                     : "Start Course"}
               </Link>
+              </div>
             </article>
           ))}
         </div>

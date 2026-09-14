@@ -125,6 +125,8 @@ export async function getCourseForEditing(courseId: string, userId: string, role
       slug: true,
       subtitle: true,
       description: true,
+      thumbnailUrl: true,
+      category: { select: { name: true } },
       status: true,
       level: true,
       priceMinor: true,

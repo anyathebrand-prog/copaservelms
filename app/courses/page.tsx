@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { Card } from "@/components/ui/card";
+import { CourseCover } from "@/components/course/course-cover";
 
 export const metadata: Metadata = { title: "Courses" };
 export const revalidate = 300;
@@ -22,7 +23,7 @@ export default async function CoursesPage({
       orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
       select: {
         id: true, title: true, slug: true, subtitle: true, level: true,
-        priceMinor: true, currency: true, estimatedMinutes: true,
+        priceMinor: true, currency: true, estimatedMinutes: true, thumbnailUrl: true,
         category: { select: { name: true } },
         _count: { select: { enrollments: true } },
       },
@@ -72,7 +73,18 @@ export default async function CoursesPage({
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {courses.map((course) => (
                 <Link key={course.id} href={`/courses/${course.slug}`} className="block">
-                  <Card className="flex h-full flex-col">
+                  <Card
+                    className="h-full"
+                    media={
+                      <CourseCover
+                        title={course.title}
+                        slug={course.slug}
+                        thumbnailUrl={course.thumbnailUrl}
+                        category={course.category?.name ?? null}
+                        sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+                      />
+                    }
+                  >
                     {course.category && (
                       <p className="text-xs font-semibold uppercase tracking-wide text-brand">
                         {course.category.name}
