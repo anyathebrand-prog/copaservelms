@@ -132,8 +132,11 @@ async function main() {
     replaced.ok ? "new URL" : "failed");
 
   if (replaced.ok) {
-    const old = await fetch(url);
-    check("and the previous file is deleted", !old.ok, String(old.status));
+    // Asked of the bucket, not over HTTP. Public objects are served through a
+    // CDN, and the fetch above populated its cache — so a deleted file keeps
+    // answering 200 for a while and an HTTP check reports a deletion that did
+    // happen as a deletion that did not.
+    check("and the previous file is deleted", !(await objectExists(url)), url.split("/").pop() ?? "");
   }
 
   const cleared = await clearCourseBanner(course.id, owner, ["INSTRUCTOR"]);
@@ -145,11 +148,28 @@ async function main() {
     String(after.thumbnailUrl));
 
   if (replaced.ok) {
-    const gone = await fetch(replaced.data.thumbnailUrl);
-    check("removing deletes the file too", !gone.ok, String(gone.status));
+    check("removing deletes the file too", !(await objectExists(replaced.data.thumbnailUrl)));
   }
 
   return finish();
+}
+
+/** Is the object behind this public URL still in the bucket? */
+async function objectExists(url: string): Promise<boolean> {
+  const marker = `/${COURSE_MEDIA_BUCKET}/`;
+  const key = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length).split("?")[0]!);
+  const folder = key.slice(0, key.lastIndexOf("/"));
+  const name = key.slice(key.lastIndexOf("/") + 1);
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
+  const { data } = await supabase.storage.from(COURSE_MEDIA_BUCKET).list(folder, { limit: 100 });
+  return (data ?? []).some((file) => file.name === name);
 }
 
 async function cleanup() {

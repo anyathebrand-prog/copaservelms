@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { MARK_VIEW_BOX, SLAB_DOWN, SLAB_UP } from "@/components/brand/mark";
+import { coverMotif } from "@/components/course/cover-motifs";
 
 /**
  * The picture on a course.
@@ -78,6 +79,7 @@ export function CourseCover({
 
   const seed = seedOf(slug || title);
   const [from, to] = PALETTES[category ?? ""] ?? DEFAULT_PALETTE;
+  const motif = coverMotif(slug, category);
 
   // Derived from the seed: the shear of the brand mark, give or take, so the
   // bands read as part of the same drawing rather than as decoration.
@@ -100,7 +102,9 @@ export function CourseCover({
 
         <rect width="320" height="180" fill={`url(#${gradientId})`} />
 
-        <g transform={`rotate(-${angle} 160 90)`} opacity="0.14">
+        {/* Behind the illustration, and fainter when there is one: the bands
+            are a backdrop, not the subject. */}
+        <g transform={`rotate(-${angle} 160 90)`} opacity={motif ? 0.08 : 0.14}>
           {[0, 1, 2, 3].map((band) => (
             <rect
               key={band}
@@ -113,12 +117,17 @@ export function CourseCover({
           ))}
         </g>
 
+        {motif}
+
         {/* The mark, quietly, bottom-right — the same place a publisher would
-            put a colophon. */}
-        <g transform="translate(232 118) scale(0.62)" opacity="0.22">
-          <path d={SLAB_UP} fill="#ffffff" />
-          <path d={SLAB_DOWN} fill="#ffffff" />
-        </g>
+            put a colophon. Dropped when an illustration is present, which
+            already occupies that corner. */}
+        {!motif && (
+          <g transform="translate(232 118) scale(0.62)" opacity="0.22">
+            <path d={SLAB_UP} fill="#ffffff" />
+            <path d={SLAB_DOWN} fill="#ffffff" />
+          </g>
+        )}
       </svg>
     </div>
   );
