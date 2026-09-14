@@ -50,3 +50,6 @@ next-env.d.ts
 
 # locally generated preview artefacts
 sample-certificate.pdf
+
+# Editor workspace files carry machine-specific folder paths.
+*.code-workspace
