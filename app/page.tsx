@@ -258,8 +258,9 @@ export default async function HomePage() {
                   With no address set the button goes to signup rather than
                   to a mailto with nothing behind it — the failure this replaces
                   was a dead link, and a fallback that is also a dead link is
-                  not a fix. It pointed at /waitlist, which was one: that path
-                  only ever had an unsubscribe route under it, never a page. */}
+                  not a fix. It pointed at /waitlist, which was one: that
+                  path only ever had an unsubscribe route under it, never a
+                  page, and the waitlist is gone entirely now. */}
               <a
                 href={settings.supportEmail ? `mailto:${settings.supportEmail}` : "/signup"}
                 className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
@@ -303,11 +304,9 @@ export default async function HomePage() {
         </Section>
 
         {/* Closes the page by showing the product rather than asking for an
-            address. The waitlist form that used to sit here belonged to a
-            pre-launch page; the site is open, so the last thing a visitor sees
-            should be the thing they would be buying. The waitlist itself is
-            untouched — /admin/waitlist, the existing entries and the
-            unsubscribe link all still work. */}
+            address. A waitlist form sat here while the site was unreleased; it
+            is open now, so the last thing a visitor sees should be the thing
+            they would be buying. */}
         <DemoVideo src={process.env.DEMO_VIDEO_URL} />
       </main>
 

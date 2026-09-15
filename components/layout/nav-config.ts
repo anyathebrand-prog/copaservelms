@@ -13,7 +13,6 @@ import {
   GraduationCap,
   KeyRound,
   LayoutDashboard,
-  MailPlus,
   PenSquare,
   ReceiptText,
   ScrollText,
@@ -127,7 +126,6 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/instructors", label: "Instructors", icon: GraduationCap },
       { href: "/admin/organizations", label: "Organisations", icon: Building2 },
       { href: "/admin/cohorts", label: "Cohorts", icon: UsersRound },
-      { href: "/admin/waitlist", label: "Waitlist", icon: MailPlus },
     ],
   },
   {

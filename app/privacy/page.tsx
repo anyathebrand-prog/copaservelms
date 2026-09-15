@@ -71,10 +71,6 @@ export default function PrivacyPage() {
           and from what IP address and browser — kept so we can show what you were told, not to
           profile you.
         </p>
-        <p>
-          <strong className="text-foreground">Waitlist entries,</strong> if you asked to hear when
-          we launch: your email, and optionally a name, organisation and area of interest.
-        </p>
       </Clause>
 
       <Clause heading="Why we use it">
@@ -144,11 +140,6 @@ export default function PrivacyPage() {
         <p>
           Consent and audit records are append-only by design: they exist to show what happened,
           which is not something that can be edited afterwards.
-        </p>
-        <p>
-          If you unsubscribe from the waitlist we keep a record that you asked us to stop, so that
-          a later import cannot quietly add you back. Your name and organisation are removed at
-          that point.
         </p>
       </Clause>
 
