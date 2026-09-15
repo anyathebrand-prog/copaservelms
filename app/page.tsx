@@ -8,9 +8,8 @@ import { Hero } from "@/components/landing/hero";
 import { VerifyWidget } from "@/components/landing/verify-widget";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
-import { WaitlistForm } from "@/components/landing/waitlist-form";
+import { DemoVideo } from "@/components/landing/demo-video";
 import { OperatorMark, PartnerLogos } from "@/components/landing/partners";
-import { CONSENT_TEXT } from "@/lib/waitlist";
 import { getSettings } from "@/lib/settings";
 
 /**
@@ -256,12 +255,13 @@ export default async function HomePage() {
                   never receive mail, so every corporate enquiry bounced. It is
                   now editable at /admin/settings by the people who own it.
 
-                  With no address set the button goes to the waitlist rather
-                  than to a mailto with nothing behind it — the failure this
-                  replaces was a dead link, and a fallback that is also a dead
-                  link is not a fix. */}
+                  With no address set the button goes to signup rather than
+                  to a mailto with nothing behind it — the failure this replaces
+                  was a dead link, and a fallback that is also a dead link is
+                  not a fix. It pointed at /waitlist, which was one: that path
+                  only ever had an unsubscribe route under it, never a page. */}
               <a
-                href={settings.supportEmail ? `mailto:${settings.supportEmail}` : "/waitlist"}
+                href={settings.supportEmail ? `mailto:${settings.supportEmail}` : "/signup"}
                 className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Talk to us
@@ -302,33 +302,13 @@ export default async function HomePage() {
           </div>
         </Section>
 
-        {/* Waitlist — closes the page on the one thing we want before launch. */}
-        <section id="waitlist" className="hero-ink grain relative overflow-hidden text-white">
-          <div aria-hidden className="hero-grid absolute inset-0" />
-          <div
-            aria-hidden
-            className="absolute -left-24 bottom-0 size-96 rounded-full bg-brand-bright/12 blur-[100px]"
-          />
-          <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
-            <Reveal>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-bright">
-                Opening soon
-              </p>
-              <h2 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
-                Be first through
-                <span className="block text-white/40">the door.</span>
-              </h2>
-              <p className="mx-auto mt-5 max-w-xl text-lg text-white/60">
-                We are testing with a small group before opening properly. Leave your address and
-                we will email you once, when it is your turn.
-              </p>
-            </Reveal>
-
-            <Reveal delay={120} className="mt-10 text-left">
-              <WaitlistForm consentText={CONSENT_TEXT} source="landing" />
-            </Reveal>
-          </div>
-        </section>
+        {/* Closes the page by showing the product rather than asking for an
+            address. The waitlist form that used to sit here belonged to a
+            pre-launch page; the site is open, so the last thing a visitor sees
+            should be the thing they would be buying. The waitlist itself is
+            untouched — /admin/waitlist, the existing entries and the
+            unsubscribe link all still work. */}
+        <DemoVideo src={process.env.DEMO_VIDEO_URL} />
       </main>
 
       {/* 11. Footer */}
