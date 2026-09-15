@@ -1,16 +1,20 @@
 /**
  * Talk to Kora for real.
  *
- * The Kora driver was written from documentation and never run against the
- * API, and one thing in it cannot be settled any other way: whether amounts
- * travel in naira or kobo. The docs never say. The evidence says naira — the
- * verify endpoint answers with "2000.00" — but evidence is not a round trip,
- * and getting it wrong charges a learner a hundred times the price.
+ * The Kora driver was written from documentation, and one thing in it could
+ * not be settled by reading: whether amounts travel in naira or kobo. The docs
+ * never say, and getting it wrong charges a learner a hundred times the price.
  *
- * So this sends a known amount through initialize, reads it back through
- * verify, and asserts the two match to the kobo. If units are wrong the
- * numbers disagree and this fails loudly, here, rather than quietly on
- * somebody's card.
+ * Settled by running this: ₦1,234.56 sent as 1234.56 comes back from Kora as
+ * "1234.56", so amounts are in the MAJOR unit and the driver's /100 is right.
+ * Kept as a check rather than deleted, because that is exactly the kind of
+ * thing a provider changes quietly.
+ *
+ * Two things worth knowing before editing it. Kora rejects an email on a
+ * .test domain outright, so the usual demo addresses fail validation with a
+ * message that says nothing about email. And an unpaid charge reports
+ * amount_paid "0.00" while amount holds the asking price — the driver reads
+ * the former, so units are checked here against the latter.
  *
  * Refuses a live key unless told otherwise. Initializing a charge does not
  * move money, but it writes a real transaction into a real merchant account,
@@ -63,7 +67,7 @@ async function main() {
       reference,
       amountMinor: AMOUNT_MINOR,
       currency: "NGN",
-      email: "checks@demo.copaserve.test",
+      email: "checks@copaserve.com.ng",
       callbackUrl: "https://www.copaserve.com.ng/payments/callback",
       metadata: { purpose: "driver check" },
     });
@@ -84,23 +88,32 @@ async function main() {
     check("the charge can be verified by our own reference",
       verified.reference === reference, verified.reference);
 
-    // The whole point. An unpaid charge reports what it is *for*, which is the
-    // number we sent — so units round-trip even before anybody pays.
-    const roundTripped = verified.amountMinor === AMOUNT_MINOR;
+    // The whole point: units. Kora reports two numbers — `amount` is what the
+    // charge is for, `amount_paid` is what has actually been paid. Units are
+    // tested against the first, because nobody has paid this one.
+    const raw = verified.raw as { amount?: string | number; amount_paid?: string | number };
+    const readBackMinor = Math.round(Number(raw.amount ?? 0) * 100);
+    const roundTripped = readBackMinor === AMOUNT_MINOR;
+
     check(
       "the amount survives the round trip (units are right)",
       roundTripped,
-      `sent ${AMOUNT_MINOR} kobo, read back ${verified.amountMinor} kobo` +
+      `sent ${AMOUNT_MINOR} kobo, Kora holds ${JSON.stringify(raw.amount)}` +
         (roundTripped
-          ? ""
-          : verified.amountMinor === AMOUNT_MINOR * 100
-            ? " — Kora wants KOBO, the driver is sending naira"
-            : verified.amountMinor === Math.round(AMOUNT_MINOR / 100)
-              ? " — Kora wants NAIRA and got kobo, or the charge is unpaid and reports 0"
-              : ""),
+          ? " — naira, as the driver assumes"
+          : readBackMinor === AMOUNT_MINOR * 100
+            ? " — Kora wants KOBO and the driver is sending naira"
+            : " — units do not agree; do not take payments through Kora"),
     );
 
     check("currency comes back as NGN", verified.currency === "NGN", verified.currency);
+
+    // amount_paid, not amount: reporting the asking price as paid would walk
+    // straight past the underpayment check in finalisePayment.
+    check("an unpaid charge reports nothing paid",
+      verified.amountMinor === 0,
+      `amount_paid ${JSON.stringify(raw.amount_paid)} -> ${verified.amountMinor} kobo`);
+
     check("an unpaid charge is not reported as successful",
       verified.status !== "SUCCESSFUL", verified.status);
   } catch (cause) {
