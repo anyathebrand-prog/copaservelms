@@ -7,6 +7,14 @@
  * the endpoint: refused when signed out, refused when unconfigured, refused
  * when the conversation is malformed, and streaming rather than buffering.
  *
+ * Cruise can now also act — re-verify a payment, issue a certificate — and an
+ * action is a different kind of risk from an answer. Those are checked against
+ * the database directly rather than through the model, because the properties
+ * that matter (it acts on the caller and nobody else; it cannot grant what was
+ * not earned; it leaves a trace) must hold whatever the model decides to call.
+ * A model that can be talked into asking for the wrong thing is expected; a
+ * tool that obliges is the defect.
+ *
  * What this cannot check is whether Cruise gives a good answer — that needs a
  * working ANTHROPIC_API_KEY. With a deliberately wrong key it checks the next
  * best thing: that a rejected key surfaces as a sentence the learner can read
@@ -15,6 +23,9 @@
  *   npx tsx --env-file=.env scripts/verify-cruise.ts http://localhost:3320
  */
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
+import { prisma } from "../lib/prisma";
+import { runCruiseToolForTesting } from "../lib/cruise";
 
 const BASE = process.argv[2] ?? "http://localhost:3320";
 const EMAIL = process.env.SMOKE_EMAIL ?? "student@demo.copaserve.test";
@@ -136,7 +147,178 @@ async function main() {
       body.slice(0, 90));
   }
 
+  await checkActions();
+
   return finish();
+}
+
+/**
+ * The action tools, exercised directly.
+ *
+ * Read-only tools leak at worst; these change things, so each check asserts
+ * against the database rather than against the sentence the tool returns.
+ */
+async function checkActions() {
+  const student = await prisma.user.findUnique({ where: { email: EMAIL }, select: { id: true } });
+  if (!student) {
+    check("find the demo student in the database", false, EMAIL);
+    return;
+  }
+
+  // --- a course belonging to somebody else ------------------------------------
+  const foreign = await prisma.enrollment.findFirst({
+    where: { userId: { not: student.id } },
+    select: { userId: true, course: { select: { slug: true, title: true } } },
+  });
+
+  if (foreign) {
+    const alsoMine = await prisma.enrollment.findFirst({
+      where: { userId: student.id, course: { slug: foreign.course.slug } },
+      select: { id: true },
+    });
+
+    if (alsoMine) {
+      check("skipped: the only other enrolment is one the student shares", true, foreign.course.slug);
+    } else {
+      const before = await prisma.certificate.count({ where: { userId: foreign.userId } });
+
+      const read = await runCruiseToolForTesting(
+        "certificate_progress",
+        { slug: foreign.course.slug },
+        student.id,
+      );
+      check("reading another learner's course progress is refused",
+        read.isError === true && /not enrolled/i.test(read.content), read.content.slice(0, 70));
+
+      const act = await runCruiseToolForTesting(
+        "issue_certificate_now",
+        { slug: foreign.course.slug },
+        student.id,
+      );
+      check("issuing against another learner's course is refused",
+        act.isError === true && /not enrolled/i.test(act.content), act.content.slice(0, 70));
+
+      const after = await prisma.certificate.count({ where: { userId: foreign.userId } });
+      check("and nothing was issued to them", before === after, `${before} -> ${after}`);
+    }
+  } else {
+    check("skipped: no other learner has an enrolment to test against", true);
+  }
+
+  // --- a slug that is not a course --------------------------------------------
+  for (const slug of ["", "   ", "no-such-course-" + randomUUID()]) {
+    const result = await runCruiseToolForTesting("issue_certificate_now", { slug }, student.id);
+    check(`an unusable slug (${JSON.stringify(slug).slice(0, 24)}) issues nothing`,
+      result.isError === true, result.content.slice(0, 60));
+  }
+
+  const noSlug = await runCruiseToolForTesting("issue_certificate_now", {}, student.id);
+  check("a missing slug issues nothing", noSlug.isError === true, noSlug.content.slice(0, 60));
+
+  // --- an unfinished course of the student's own --------------------------------
+  const unfinished = await prisma.enrollment.findFirst({
+    where: { userId: student.id, progressPercent: { lt: 100 } },
+    select: { id: true, course: { select: { slug: true } } },
+  });
+
+  if (unfinished) {
+    const before = await prisma.certificate.count({ where: { enrollmentId: unfinished.id } });
+
+    const result = await runCruiseToolForTesting(
+      "issue_certificate_now",
+      { slug: unfinished.course.slug },
+      student.id,
+    );
+
+    const after = await prisma.certificate.count({ where: { enrollmentId: unfinished.id } });
+    check("an unfinished course issues no certificate", before === after, `${before} -> ${after}`);
+    check("and the learner is told what is outstanding",
+      /outstanding|not been earned|approve/i.test(result.content), result.content.slice(0, 70));
+
+    const progress = await runCruiseToolForTesting(
+      "certificate_progress",
+      { slug: unfinished.course.slug },
+      student.id,
+    );
+    check("certificate_progress names the conditions rather than a percentage",
+      /outstanding|done:|already been issued|no conditions/i.test(progress.content),
+      progress.content.slice(0, 70));
+  } else {
+    check("skipped: the demo student has no unfinished course", true);
+  }
+
+  // --- rechecking payments ------------------------------------------------------
+  //
+  // Run as a user with no payments at all, so the check never reaches a live
+  // gateway and never risks settling somebody's real charge.
+  const stranger = randomUUID();
+  const none = await runCruiseToolForTesting("recheck_payment", {}, stranger);
+  check("with no unsettled payments, recheck_payment grants nothing and says so",
+    /no unsettled payments/i.test(none.content), none.content.slice(0, 70));
+
+  const enrolments = await prisma.enrollment.count({ where: { userId: stranger } });
+  check("and created no enrolment", enrolments === 0, String(enrolments));
+
+  // --- the ceiling ---------------------------------------------------------------
+  const limited = randomUUID();
+  let refusedAt = 0;
+  for (let attempt = 1; attempt <= 9; attempt++) {
+    const result = await runCruiseToolForTesting("recheck_payment", {}, limited);
+    if (result.isError && /too many/i.test(result.content)) {
+      refusedAt = attempt;
+      break;
+    }
+  }
+  check("actions stop after the hourly ceiling", refusedAt === 7, refusedAt ? `refused at ${refusedAt}` : "never refused");
+
+  // --- an action that actually runs, on the student's own course --------------
+  //
+  // Everything above is refused before anything happens, which is the point of
+  // those checks but means none of them proves the acting path works. This one
+  // reaches autoIssueCertificate for real. It is safe to run repeatedly: a
+  // course already certificated issues nothing the second time, and that
+  // idempotency is itself worth asserting — Cruise will be asked twice by
+  // people who do not believe it the first time.
+  const own = await prisma.enrollment.findFirst({
+    where: { userId: student.id },
+    select: { id: true, course: { select: { slug: true } } },
+  });
+
+  if (own) {
+    const before = await prisma.certificate.count({ where: { enrollmentId: own.id } });
+    const since = new Date();
+
+    const result = await runCruiseToolForTesting(
+      "issue_certificate_now",
+      { slug: own.course.slug },
+      student.id,
+    );
+
+    const after = await prisma.certificate.count({ where: { enrollmentId: own.id } });
+    check("acting twice on the same course issues at most one certificate",
+      after <= 1 && after >= before, `${before} -> ${after}`);
+    check("and the learner is told which of the three things happened",
+      /Issued\.|already exists|not been earned|administrator/i.test(result.content),
+      result.content.slice(0, 70));
+
+    // --- the trace -------------------------------------------------------------
+    const audited = await prisma.auditLog.count({
+      where: {
+        actorId: student.id,
+        action: "cruise.certificate.rechecked",
+        entityId: own.id,
+        createdAt: { gte: since },
+      },
+    });
+    check("the action is written to the audit log", audited === 1, `${audited} rows`);
+  } else {
+    check("skipped: the demo student is not enrolled in anything", true);
+  }
+
+  // --- an unknown tool ------------------------------------------------------------
+  const unknown = await runCruiseToolForTesting("delete_everything", {}, student.id);
+  check("a tool that does not exist does nothing",
+    unknown.isError === true && /No tool named/.test(unknown.content), unknown.content.slice(0, 60));
 }
 
 function finish() {

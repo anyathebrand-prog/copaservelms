@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   MAX_MESSAGE_CHARS,
   MAX_TURNS,
@@ -15,10 +16,19 @@ import {
  * spinner for eight seconds and then showing a paragraph all at once.
  *
  * Signed in only. The caller is taken from the session, never from the body:
- * every tool Cruise can reach reads that learner's own enrolments and
- * certificates, so a user id accepted from the request would be a way to read
- * somebody else's.
+ * every tool Cruise can reach reads — or acts on — that learner's own
+ * enrolments, payments and certificates, so a user id accepted from the request
+ * would be a way to reach somebody else's.
+ *
+ * Rate limited per account. Each request costs real money at Anthropic and some
+ * of them re-verify a payment or render a certificate, so an open loop here is
+ * an open tab. In-process and per-instance, which means a multi-instance
+ * deployment gets more than this ceiling — it blunts a runaway client, it is
+ * not a billing control. The spend cap in the Anthropic console is that.
  */
+const LIMIT = 20;
+const WINDOW_MS = 10 * 60 * 1000;
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -44,6 +54,17 @@ export async function POST(request: Request) {
     return Response.json(
       { error: `Send { messages: [{ role, content }] }, at most ${MAX_TURNS} of them.` },
       { status: 400 },
+    );
+  }
+
+  // Counted only once the request is known to be answerable. A malformed body
+  // never reaches the model, so charging it against the learner's budget would
+  // let a buggy client lock them out of the path that works.
+  const limit = rateLimit(`cruise:${user.id}`, LIMIT, WINDOW_MS);
+  if (!limit.ok) {
+    return Response.json(
+      { error: "That is a lot of questions at once. Give it a minute." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
     );
   }
 

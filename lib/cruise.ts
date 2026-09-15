@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Cruise — the assistant that helps people use CopaServe.
@@ -17,10 +19,20 @@ import { prisma } from "@/lib/prisma";
  * people who already have accounts, and the learners who most need help are
  * signed in anyway.
  *
- * Nothing is persisted. The conversation lives in the browser and the server
- * is stateless — which for a platform that teaches data protection is the
- * easier position to defend than a transcript store full of other people's
- * questions.
+ * Nothing of the conversation is persisted. It lives in the browser and the
+ * server is stateless — which for a platform that teaches data protection is
+ * the easier position to defend than a transcript store full of other people's
+ * questions. Actions are the exception: those are written to the audit log,
+ * because an assistant that changes something and leaves no trace is worse
+ * than one that cannot change anything at all.
+ *
+ * Cruise can act, not only answer. Two problems make up most of the support
+ * this platform receives — "I paid and cannot open the course" and "I finished
+ * and got no certificate" — and both already have a safe resolution: re-ask
+ * the gateway, and re-run the eligibility check. Neither can grant anything
+ * that was not already earned or paid for, which is the property that makes
+ * them safe to hand to a model. Anything needing judgement — refunds,
+ * extensions, deletion — stays with a person.
  *
  * Configured through ANTHROPIC_API_KEY. Absent, Cruise reports itself
  * unavailable and nothing else changes — the same shape as the email, SMS,
@@ -86,6 +98,107 @@ const TOOLS: Anthropic.Tool[] = [
 ];
 
 /**
+ * What Cruise can change.
+ *
+ * Kept apart from the read-only tools because they are a different kind of
+ * thing, and that difference should be visible in the file rather than only in
+ * a description. Each is scoped to the caller, idempotent, and incapable of
+ * granting anything unearned: recheck_payment asks the gateway and believes
+ * the gateway; issue_certificate_now re-runs the same eligibility check the
+ * platform runs for itself. The worst outcome of the model calling either
+ * needlessly is a wasted round trip.
+ */
+const ACTION_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "certificate_progress",
+    description:
+      "Why a certificate has not been issued for one of the learner's own courses: every " +
+      "condition the course imposes, whether each is met, and what is outstanding. Use this " +
+      "whenever someone asks why they have no certificate — it is exact, where progress is not.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "Slug of a course the learner is enrolled in." },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "recheck_payment",
+    description:
+      "Re-ask the payment gateway about this learner's own unsettled payments and grant access " +
+      "if the money did arrive. Use it when somebody says they have paid but cannot open the " +
+      "course. It cannot grant access to a course that was not paid for. Call it once — if it " +
+      "reports a payment still unsettled, calling again will not change that.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "issue_certificate_now",
+    description:
+      "Re-check one of the learner's own courses and issue the certificate if every condition is " +
+      "now met. Use it when they believe they have finished but my_certificates shows nothing. " +
+      "It cannot issue a certificate that has not been earned — where something is outstanding " +
+      "it reports what.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "Slug of a course the learner is enrolled in." },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+  },
+];
+
+/**
+ * How much Cruise may change for one learner in an hour.
+ *
+ * Both actions reach something slow and paid for — a gateway, a PDF render —
+ * so a conversation looping on "try again" should stop being answered by
+ * machinery and start being answered by a person. In-process and per-instance,
+ * like the rest of the platform's limiting: a blunt ceiling, not a real
+ * control.
+ */
+const ACTION_LIMIT = 6;
+const ACTION_WINDOW_MS = 60 * 60 * 1000;
+
+/** Actions leave a trace. Failing to write the trace must not fail the action. */
+async function record(
+  actorId: string,
+  action: string,
+  entityType: string,
+  entityId: string | null,
+  after: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await prisma.auditLog.create({
+      data: { actorId, action, entityType, entityId, after: after as never },
+    });
+  } catch (cause) {
+    console.error("[cruise] audit write failed", action, cause);
+  }
+}
+
+/** The caller's own enrolment on a course, by slug. Never anybody else's. */
+async function ownEnrollment(userId: string, slug: unknown) {
+  if (typeof slug !== "string" || !slug.trim()) return null;
+  return prisma.enrollment.findFirst({
+    where: { userId, course: { slug: slug.trim() } },
+    select: { id: true, course: { select: { title: true } } },
+  });
+}
+
+/** Renders an eligibility report as something the model can quote from. */
+function describeConditions(conditions: { label: string; met: boolean; detail: string; applicable: boolean }[]) {
+  const relevant = conditions.filter((c) => c.applicable);
+  if (relevant.length === 0) return "This course imposes no conditions.";
+  return relevant
+    .map((c) => `${c.met ? "done" : "outstanding"}: ${c.label} — ${c.detail}`)
+    .join("\n");
+}
+
+/**
  * The catalogue, verbatim.
  *
  * Small enough to inline — nine courses — and inlining it is what stops Cruise
@@ -128,7 +241,11 @@ async function catalogue(): Promise<string> {
     .join("\n");
 }
 
-function instructions(catalogueText: string, firstName: string): string {
+function instructions(
+  catalogueText: string,
+  firstName: string,
+  supportEmail: string | null,
+): string {
   return `You are Cruise, the assistant on CopaServe — a Nigerian professional certification platform run by Business Intelligence Technologies Limited, Lagos. CopaServe teaches data protection (the NDPA 2023), compliance, cybersecurity and professional skills, and issues verifiable certificates.
 
 You are talking to ${firstName}, who is signed in.
@@ -147,7 +264,23 @@ Never state whether someone has earned, been issued, or is owed a certificate wi
 
 Never ask for, and never repeat back, a password, a card number, a BVN, a NIN, or a one-time code. If someone volunteers one, tell them plainly not to share it and that nobody at CopaServe will ask for it. This is a data-protection platform; behaving otherwise teaches the wrong lesson.
 
-Do not promise refunds, extensions, account deletion, or anything else that needs a human decision. Say it needs the team and that they can reach support from the site.
+Do not promise refunds, extensions, account deletion, or anything else that needs a human decision. Say it needs the team${
+    supportEmail ? ` and give them the address: ${supportEmail}` : " and that they can reach support from the site"
+}.
+
+## What you can do about it
+
+You are not only able to answer — you can fix the two things that go wrong most often. Do not describe these actions before taking them, and do not ask permission for them; they cannot grant anything that was not already paid for or earned, and asking first only makes somebody wait.
+
+If they say they have paid but cannot open a course, call recheck_payment. It asks the gateway again and grants access if the money arrived. If it reports the payment still unsettled, say so plainly — that a card was debited does not always mean the payment completed, and it can take a little time to settle. Do not call it twice.
+
+If they have finished a course but have no certificate, call certificate_progress for that course first, so you can say precisely what is outstanding. If it shows nothing outstanding and still no certificate, call issue_certificate_now. If something is outstanding, say which thing and where to go and do it, and do not call issue_certificate_now — it will not issue one that has not been earned.
+
+These act on this learner's account only. If they are asking on behalf of somebody else, that is for the team.
+
+When an action does not resolve it, stop and hand over${
+    supportEmail ? `: give them ${supportEmail} and tell them what you already tried, so they do not have to explain it twice` : ", and tell them what you already tried so they do not have to explain it twice"
+}. A second attempt at the same thing is not help.
 
 ## How CopaServe actually works
 
@@ -273,11 +406,160 @@ async function runTool(name: string, input: unknown, userId: string): Promise<To
       };
     }
 
+    // ---- actions -----------------------------------------------------------
+    if (name === "certificate_progress") {
+      const enrollment = await ownEnrollment(userId, (input as { slug?: unknown })?.slug);
+      if (!enrollment) return { content: "This learner is not enrolled in that course.", isError: true };
+
+      const { evaluateEligibility } = await import("@/lib/certificates/eligibility");
+      const eligibility = await evaluateEligibility(enrollment.id);
+      if (!eligibility) return { content: "That enrolment could not be read.", isError: true };
+
+      if (eligibility.alreadyIssued) {
+        return {
+          content: `${eligibility.courseTitle}: the certificate has already been issued. It is under Certificates.`,
+        };
+      }
+
+      return {
+        content: [
+          `${eligibility.courseTitle}:`,
+          describeConditions(eligibility.conditions),
+          eligibility.awaitingApproval
+            ? "Everything is done; it is waiting on an administrator to approve it. That is not something you can hurry."
+            : eligibility.eligible
+              ? "Every condition is met but no certificate exists — issue_certificate_now will fix that."
+              : "The outstanding items above are what stands between them and the certificate.",
+        ].join("\n"),
+      };
+    }
+
+    if (name === "recheck_payment") {
+      const limit = rateLimit(`cruise-action:${userId}`, ACTION_LIMIT, ACTION_WINDOW_MS);
+      if (!limit.ok) {
+        return {
+          content:
+            "This learner has asked for too many of these in an hour. Stop retrying and hand them to the team.",
+          isError: true,
+        };
+      }
+
+      const pending = await prisma.payment.findMany({
+        where: { userId, status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { reference: true, provider: true, course: { select: { title: true } } },
+      });
+
+      if (pending.length === 0) {
+        return {
+          content:
+            "There are no unsettled payments on this account. If they cannot open a course they " +
+            "believe they paid for, the payment was not recorded against this account — that " +
+            "needs the team, and they should have their transaction reference ready.",
+        };
+      }
+
+      const { finalisePayment } = await import("@/lib/payments");
+      const lines: string[] = [];
+
+      for (const payment of pending) {
+        const title = payment.course?.title ?? "a course";
+        const outcome = await finalisePayment(payment.reference);
+
+        await record(userId, "cruise.payment.rechecked", "Payment", payment.reference, {
+          outcome,
+          provider: payment.provider,
+        });
+
+        lines.push(
+          `${title}: ` +
+            {
+              ENROLLED: "the payment had gone through. Access is granted now — the course is open.",
+              ALREADY_FINALISED: "this one was already settled and access already granted.",
+              PENDING:
+                "the gateway still shows this unsettled. Their card may have been debited without " +
+                "the payment completing, which usually resolves by itself but sometimes does not.",
+              FAILED: "the gateway says this payment failed, so nothing was taken. They can try again.",
+              AMOUNT_MISMATCH:
+                "less was received than the course costs, so it is held for a person to look at.",
+              UNKNOWN_REFERENCE: "this reference is not one the gateway recognises.",
+            }[outcome],
+        );
+      }
+
+      return { content: lines.join("\n") };
+    }
+
+    if (name === "issue_certificate_now") {
+      const limit = rateLimit(`cruise-action:${userId}`, ACTION_LIMIT, ACTION_WINDOW_MS);
+      if (!limit.ok) {
+        return {
+          content:
+            "This learner has asked for too many of these in an hour. Stop retrying and hand them to the team.",
+          isError: true,
+        };
+      }
+
+      const enrollment = await ownEnrollment(userId, (input as { slug?: unknown })?.slug);
+      if (!enrollment) return { content: "This learner is not enrolled in that course.", isError: true };
+
+      const { autoIssueCertificate } = await import("@/lib/certificates/auto-issue");
+      const issued = await autoIssueCertificate(enrollment.id);
+
+      await record(userId, "cruise.certificate.rechecked", "Enrollment", enrollment.id, {
+        issued: Boolean(issued),
+        credentialId: issued?.credentialId ?? null,
+      });
+
+      if (issued) {
+        return {
+          content:
+            `Issued. ${enrollment.course.title}, credential ${issued.credentialId}. It is under ` +
+            "Certificates now and can be downloaded as a PDF.",
+        };
+      }
+
+      // Nothing issued: say why, rather than leaving the model to guess.
+      const { evaluateEligibility } = await import("@/lib/certificates/eligibility");
+      const eligibility = await evaluateEligibility(enrollment.id);
+
+      if (eligibility?.alreadyIssued) {
+        return { content: "A certificate already exists for this course. It is under Certificates." };
+      }
+      if (eligibility?.awaitingApproval) {
+        return {
+          content:
+            "Everything is done, but this course needs an administrator to approve the certificate. " +
+            "That is deliberate and cannot be hurried from here.",
+        };
+      }
+
+      return {
+        content:
+          "Nothing was issued, because it has not been earned yet. What is outstanding:\n" +
+          (eligibility ? describeConditions(eligibility.conditions) : "could not be determined."),
+      };
+    }
+
     return { content: `No tool named ${name}.`, isError: true };
   } catch (cause) {
     console.error("[cruise] tool failed", name, cause);
     return { content: "That lookup failed. Say so rather than guessing.", isError: true };
   }
+}
+
+/**
+ * The tools, reachable without a model.
+ *
+ * Every property that matters about the action tools — that they are scoped to
+ * the caller, that they cannot grant anything unearned, that they are counted —
+ * lives in runTool, which the HTTP route can only reach through a paid API
+ * call. Exporting the seam means those properties can be checked for real
+ * rather than argued for in a comment.
+ */
+export function runCruiseToolForTesting(name: string, input: unknown, userId: string) {
+  return runTool(name, input, userId);
 }
 
 export type CruiseError = "NOT_CONFIGURED" | "TOO_LONG" | "FAILED";
@@ -304,7 +586,8 @@ export async function streamCruise(
     return { ok: false, error: "TOO_LONG", detail: "That message is too long." };
   }
 
-  const system = instructions(await catalogue(), user.firstName);
+  const settings = await getSettings();
+  const system = instructions(await catalogue(), user.firstName, settings.supportEmail);
   const messages: Anthropic.MessageParam[] = conversation.map((m) => ({
     role: m.role,
     content: m.content,
@@ -323,7 +606,7 @@ export async function streamCruise(
         // Low effort: this is a support assistant, not a reasoning task, and
         // the cost of a chat route adds up faster than anything else here.
         output_config: { effort: "low" },
-        tools: TOOLS,
+        tools: [...TOOLS, ...ACTION_TOOLS],
         messages,
       });
 

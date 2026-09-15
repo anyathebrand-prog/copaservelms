@@ -16,12 +16,19 @@ import { MARK_VIEW_BOX, SLAB_DOWN, SLAB_UP } from "@/components/brand/mark";
  * someone to assume either way.
  */
 const GREETING =
-  "I can help with courses, certificates and how the platform works. What do you need?";
+  "I can answer questions about courses and certificates — and if a payment or a certificate " +
+  "has not come through, I can usually sort it out from here. What do you need?";
 
+/**
+ * The openers name the two problems people actually arrive with, rather than
+ * the two that are easiest to answer. Somebody who has paid and cannot open
+ * their course does not think to ask an assistant about it; saying so up front
+ * is what turns Cruise from a FAQ into support.
+ */
 const SUGGESTIONS = [
-  "How do I get my certificate?",
+  "I paid but can't open my course",
+  "Why haven't I got my certificate?",
   "What am I enrolled in?",
-  "Which courses are free?",
 ];
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -167,7 +174,7 @@ export function CruiseWidget() {
                 : "max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-surface-muted px-3.5 py-2.5 text-sm"
             }
           >
-            {message.content || (pending ? "…" : "")}
+            {message.content || (pending ? "Looking…" : "")}
           </div>
         ))}
 
