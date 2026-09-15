@@ -16,7 +16,12 @@
 import { createHmac } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
-import { createDriverForTesting, type PaymentDriver } from "../lib/payments/provider";
+import {
+  availableProviders,
+  createDriverForTesting,
+  getPaymentDriver,
+  type PaymentDriver,
+} from "../lib/payments/provider";
 import { enrolFree, finalisePayment, startCheckout } from "../lib/payments";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -132,6 +137,53 @@ async function main() {
   check("Paystack extracts the reference",
     paystack.parseWebhook(body)?.reference === "CS-ABC", `${paystack.parseWebhook(body)?.reference}`);
   check("Paystack ignores an unparseable body", paystack.parseWebhook("not json") === null, "null");
+
+  // --- which providers are offered, and which can still be verified ----------
+  //
+  // These are different questions. Retiring a gateway removes its button; it
+  // does not remove the payments already taken through it, and those still
+  // need verifying and refunding. A check exists because the tempting way to
+  // retire one — delete the key — silently takes both away.
+  {
+    const saved = {
+      paystack: process.env.PAYSTACK_SECRET_KEY,
+      kora: process.env.KORA_SECRET_KEY,
+      choice: process.env.CHECKOUT_PROVIDERS,
+    };
+
+    process.env.PAYSTACK_SECRET_KEY = "sk_test_paystack";
+    process.env.KORA_SECRET_KEY = "sk_test_kora";
+
+    delete process.env.CHECKOUT_PROVIDERS;
+    check("with no choice made, every configured provider is offered",
+      availableProviders().join(",") === "PAYSTACK,KORA", availableProviders().join(","));
+
+    process.env.CHECKOUT_PROVIDERS = "KORA";
+    check("naming one provider offers only that one",
+      availableProviders().join(",") === "KORA", availableProviders().join(","));
+
+    check("but the retired provider can still be built, so its payments verify",
+      getPaymentDriver("PAYSTACK").id === "PAYSTACK", "driver still available");
+
+    process.env.CHECKOUT_PROVIDERS = "KORA,PAYSTACK";
+    check("the order given is the order offered",
+      availableProviders().join(",") === "KORA,PAYSTACK", availableProviders().join(","));
+
+    process.env.CHECKOUT_PROVIDERS = "KORA,FLUTTERWAVE";
+    check("naming a provider with no credentials does not offer a dead button",
+      availableProviders().join(",") === "KORA", availableProviders().join(","));
+
+    process.env.CHECKOUT_PROVIDERS = " kora ";
+    check("whitespace and case are tolerated",
+      availableProviders().join(",") === "KORA", availableProviders().join(","));
+
+    if (saved.paystack === undefined) delete process.env.PAYSTACK_SECRET_KEY;
+    else process.env.PAYSTACK_SECRET_KEY = saved.paystack;
+    if (saved.kora === undefined) delete process.env.KORA_SECRET_KEY;
+    else process.env.KORA_SECRET_KEY = saved.kora;
+    if (saved.choice === undefined) delete process.env.CHECKOUT_PROVIDERS;
+    else process.env.CHECKOUT_PROVIDERS = saved.choice;
+  }
 
   // Kora signs only the data object, where Paystack signs the whole body.
   // These two checks exist to catch the exact mistake of copying the driver

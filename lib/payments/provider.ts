@@ -377,13 +377,45 @@ export function getPaymentDriver(provider: PaymentProvider): PaymentDriver {
   throw new Error(`No driver for payment provider ${provider}.`);
 }
 
-/** Providers with credentials present, in the order they should be offered. */
-export function availableProviders(): PaymentProvider[] {
+/** Every provider this deployment holds credentials for. */
+export function configuredProviders(): PaymentProvider[] {
   const providers: PaymentProvider[] = [];
   if (process.env.PAYSTACK_SECRET_KEY) providers.push("PAYSTACK");
   if (process.env.FLUTTERWAVE_SECRET_KEY) providers.push("FLUTTERWAVE");
   if (process.env.KORA_SECRET_KEY) providers.push("KORA");
   return providers;
+}
+
+/**
+ * Providers offered at checkout, in the order they are offered.
+ *
+ * Deliberately not the same question as whether a driver can be built.
+ * Retiring a gateway does not retire the payments already taken through it:
+ * those rows still need verifying when a late webhook arrives, and refunding
+ * if someone asks. Deleting the key would take both of those away at the same
+ * time as removing the button, which is how a refund becomes impossible.
+ *
+ * So CHECKOUT_PROVIDERS names what to offer — "KORA", or "KORA,FLUTTERWAVE" —
+ * while the credentials stay put and getPaymentDriver keeps working for
+ * everything. Unset, every configured provider is offered, which is what a
+ * deployment that has never thought about this should get.
+ */
+export function availableProviders(): PaymentProvider[] {
+  const configured = configuredProviders();
+
+  const wanted = (process.env.CHECKOUT_PROVIDERS ?? "")
+    .split(",")
+    .map((name) => name.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (wanted.length === 0) return configured;
+
+  // Their order, not ours — the first one named is the one to put first.
+  // Anything named but not configured is dropped rather than offered as a
+  // button that cannot work.
+  return wanted.filter((name): name is PaymentProvider =>
+    (configured as string[]).includes(name),
+  );
 }
 
 /** Exported for tests: lets a driver be built with a known secret. */
