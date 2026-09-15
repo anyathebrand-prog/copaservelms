@@ -55,7 +55,8 @@
     "verify:cert-gating": "tsx --env-file=.env scripts/verify-certificate-gating.ts",
     "verify:banner": "tsx --env-file=.env scripts/verify-course-banner.ts",
     "setup:storage": "tsx --env-file=.env scripts/setup-storage.ts",
-    "verify:kora": "tsx --env-file=.env scripts/verify-kora.ts"
+    "verify:kora": "tsx --env-file=.env scripts/verify-kora.ts",
+    "verify:cruise": "tsx --env-file=.env scripts/verify-cruise.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

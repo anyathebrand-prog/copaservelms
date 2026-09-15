@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { LogoLink } from "@/components/layout/logo";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavProgress } from "@/components/layout/nav-progress";
+import { CruiseWidget } from "@/components/cruise/cruise-widget";
+import { cruiseConfigured } from "@/lib/cruise";
 import {
   AreaSwitcherFallback,
   PortalAreaSwitcher,
@@ -49,6 +51,11 @@ export default function PortalLayout({ children }: LayoutProps<"/">) {
       </header>
 
       {children}
+
+      {/* Only where somebody is signed in, and only when there is an API key
+          behind it — a button that answers "not available" is worse than no
+          button. Sits above the mobile bar, never opens itself. */}
+      {cruiseConfigured() && <CruiseWidget />}
     </div>
   );
 }
