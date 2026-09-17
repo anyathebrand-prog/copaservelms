@@ -11,9 +11,14 @@ import { Play } from "lucide-react";
  *
  * Two shapes are accepted because the two likely answers are different. A
  * YouTube or Vimeo link is what happens if somebody records this on a phone
- * and uploads it that afternoon; an .mp4 in Supabase Storage is what happens
- * if the video is made properly and nobody wants YouTube's recommendations
- * sitting under it. Neither should need a code change.
+ * and uploads it that afternoon; a file is what happens if the video is made
+ * properly and nobody wants YouTube's branding, related videos or cookies
+ * under it. Neither needs a code change — only DEMO_VIDEO_URL.
+ *
+ * A file can be a full URL (Supabase Storage, a CDN) or a path into public/,
+ * so "/media/walkthrough.mp4" serves public/media/walkthrough.mp4. The path
+ * case matters: new URL() throws on it, which is why the embed check runs
+ * first and the file check works on the raw string.
  */
 type Props = { src?: string | null };
 
