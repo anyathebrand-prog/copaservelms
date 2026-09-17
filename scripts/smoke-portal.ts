@@ -6,13 +6,19 @@
  * server/client boundary violation reached a deployment while `next build`
  * reported success.
  *
- *   npx tsx --env-file=.env.local <this file> http://127.0.0.1:PORT
+ * Signs in as SMOKE_EMAIL. With DEMO_PASSWORD set it uses the password;
+ * without one it mints a session from the service-role key instead, so the
+ * suite can run as a real administrator without that person's password being
+ * typed into a shell, a script, or this file.
+ *
+ *   npx tsx --env-file=.env <this file> http://127.0.0.1:PORT
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:3200";
 const EMAIL = process.env.SMOKE_EMAIL ?? "admin@demo.copaserve.test";
-const PASSWORD = process.env.DEMO_PASSWORD ?? "CopaServe-Demo-2026!";
+const PASSWORD = process.env.DEMO_PASSWORD ?? null;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -30,19 +36,72 @@ function sessionCookies(session: unknown): string {
   return chunks.map((chunk, index) => `${name}.${index}=${chunk}`).join("; ");
 }
 
+/** The ordinary path: whatever a person would type. */
+async function signInWithPassword(supabase: SupabaseClient) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: EMAIL,
+    password: PASSWORD!,
+  });
+  if (error || !data.session) throw new Error(`sign-in failed: ${error?.message}`);
+  return data.session;
+}
+
+/**
+ * No password: ask the auth server for a one-time link and redeem it.
+ *
+ * The seeded demo administrator this suite used to run as is retired, and the
+ * administrator who replaced it is a real person whose password should not be
+ * in a test command. The service-role key is already required for other
+ * scripts in this repository and never leaves the machine.
+ */
+async function mintSession(supabase: SupabaseClient) {
+  if (!SERVICE_KEY) {
+    throw new Error(
+      "Set DEMO_PASSWORD, or SUPABASE_SERVICE_ROLE_KEY to sign in without one.",
+    );
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: EMAIL,
+  });
+  if (error || !data.properties?.hashed_token) {
+    throw new Error(`could not mint a session for ${EMAIL}: ${error?.message}`);
+  }
+
+  // generateLink does not email anything; it returns the token, which is
+  // redeemed here for a real session.
+  const verified = await supabase.auth.verifyOtp({
+    type: "email",
+    token_hash: data.properties.hashed_token,
+  });
+  if (verified.error || !verified.data.session) {
+    throw new Error(`token redemption failed: ${verified.error?.message}`);
+  }
+
+  return verified.data.session;
+}
+
 async function main() {
   const supabase = createClient(SUPABASE_URL, ANON, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: EMAIL,
-    password: PASSWORD,
-  });
-  if (error || !data.session) throw new Error(`sign-in failed: ${error?.message}`);
+  console.log(`signing in as ${EMAIL}${PASSWORD ? "" : " (service-role session)"}\n`);
 
-  const cookie = sessionCookies(data.session);
-  const paths = ["/portal", "/admin", "/instructor", "/student", "/admin/cohorts", "/admin/users", "/admin/invoices", "/admin/enquiries"];
+  const session = PASSWORD
+    ? await signInWithPassword(supabase)
+    : await mintSession(supabase);
+
+  const cookie = sessionCookies(session);
+  const paths = ["/portal", "/admin", "/instructor", "/student", "/admin/cohorts", "/admin/users", "/admin/invoices", "/admin/enquiries",
+    // SUPER_ADMIN only. Unreachable while the sole super-admin was a seeded
+    // demo account, which is exactly why they were never smoke-tested.
+    "/admin/api-keys", "/admin/webhooks"];
 
   let failures = 0;
 
