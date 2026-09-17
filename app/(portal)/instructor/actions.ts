@@ -1,5 +1,6 @@
 "use server";
 
+import { resolveCategoryFromForm } from "@/lib/categories";
 import { revalidatePath } from "next/cache";
 import { clearCourseBanner, setCourseBanner } from "@/lib/course-media";
 import { redirect } from "next/navigation";
@@ -55,9 +56,16 @@ function explode(error: MutationError): never {
 export async function createCourseAction(formData: FormData): Promise<void> {
   const user = await requireInstructor();
 
+  const category = await resolveCategoryFromForm(
+    (formData.get("categoryId") as string) || null,
+    (formData.get("newCategory") as string) || null,
+    user.id,
+  );
+  if (!category.ok) throw new Error(category.detail);
+
   const result = await createCourse(user.id, {
     title: String(formData.get("title") ?? ""),
-    categoryId: (formData.get("categoryId") as string) || null,
+    categoryId: category.data.id,
     level: (formData.get("level") as CourseLevel) || "BEGINNER",
   });
 
@@ -75,6 +83,13 @@ export async function updateCourseAction(formData: FormData): Promise<void> {
   const minutesRaw = String(formData.get("estimatedMinutes") ?? "").trim();
   const minQuizRaw = String(formData.get("minQuizScore") ?? "").trim();
 
+  const category = await resolveCategoryFromForm(
+    (formData.get("categoryId") as string) || null,
+    (formData.get("newCategory") as string) || null,
+    user.id,
+  );
+  if (!category.ok) throw new Error(category.detail);
+
   const result = await updateCourseDetails(courseId, user.id, user.roles, {
     title: String(formData.get("title") ?? ""),
     subtitle: (formData.get("subtitle") as string) || null,
@@ -83,7 +98,7 @@ export async function updateCourseAction(formData: FormData): Promise<void> {
     // The form collects naira; the column stores kobo.
     priceMinor: priceRaw === "" ? undefined : Math.round(Number(priceRaw) * 100),
     estimatedMinutes: minutesRaw === "" ? null : Number(minutesRaw),
-    categoryId: (formData.get("categoryId") as string) || null,
+    categoryId: category.data.id,
     minQuizScore: minQuizRaw === "" ? null : Number(minQuizRaw),
     requiresAssignments: formData.get("requiresAssignments") === "on",
     certificateEnabled: formData.get("certificateEnabled") === "on",

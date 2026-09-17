@@ -56,6 +56,17 @@ export default async function NewCoursePage() {
               </option>
             ))}
           </select>
+          {/* The ten seeded domains are what CopaServe set out to teach, not
+              what every instructor will. A name typed here is matched against
+              the existing domains first, so near-duplicates join the domain
+              they meant rather than splitting the catalogue. */}
+          <input
+            name="newCategory"
+            maxLength={60}
+            placeholder="Or type a new domain, e.g. Forensic Accounting"
+            aria-label="Add a new training domain"
+            className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
+          />
         </label>
 
         <label className="block">

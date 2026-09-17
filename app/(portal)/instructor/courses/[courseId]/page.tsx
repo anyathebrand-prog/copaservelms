@@ -236,6 +236,16 @@ export default async function EditCoursePage({
                   </option>
                 ))}
               </select>
+              {/* Same as the create form: a typed name wins over the select,
+                  and is matched against existing domains before anything new
+                  is made. */}
+              <input
+                name="newCategory"
+                maxLength={60}
+                placeholder="Or type a new domain"
+                aria-label="Add a new training domain"
+                className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand"
+              />
             </label>
 
             <label className="block">
