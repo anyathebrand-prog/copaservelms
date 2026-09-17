@@ -57,7 +57,8 @@
     "verify:cruise": "tsx --env-file=.env scripts/verify-cruise.ts",
     "verify:enquiries": "tsx --env-file=.env scripts/verify-enquiries.ts",
     "verify:email": "tsx --env-file=.env scripts/verify-email.ts",
-    "verify:categories": "tsx --env-file=.env scripts/verify-categories.ts"
+    "verify:categories": "tsx --env-file=.env scripts/verify-categories.ts",
+    "verify:video-url": "tsx scripts/verify-video-url.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

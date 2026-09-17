@@ -17,8 +17,19 @@ import { Play } from "lucide-react";
  */
 type Props = { src?: string | null };
 
-/** Turns a YouTube or Vimeo link — in any of the shapes people paste — into an embed URL. */
-function embedUrl(raw: string): string | null {
+/**
+ * Turns a YouTube or Vimeo link — in any of the shapes people paste — into an
+ * embed URL that loops.
+ *
+ * YouTube needs the video's own id repeated as `playlist` for `loop=1` to do
+ * anything: on its own, loop applies to a playlist, and a single video has
+ * none, so it plays once and stops. That pair is the whole trick, and it is
+ * the reason this returns a built URL rather than just an id.
+ *
+ * No autoplay. A page that starts making noise as you scroll past is the
+ * behaviour everyone mutes the tab for; the loop is for whoever presses play.
+ */
+export function embedUrl(raw: string): string | null {
   let url: URL;
   try {
     url = new URL(raw);
@@ -28,18 +39,22 @@ function embedUrl(raw: string): string | null {
 
   const host = url.hostname.replace(/^www\./, "");
 
-  // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, /shorts/ID
+  const youtube = (id: string) =>
+    `https://www.youtube-nocookie.com/embed/${id}?loop=1&playlist=${id}&rel=0`;
+
+  // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, /shorts/ID,
+  // /live/ID — and any of them carrying ?si=, ?t= or a trailing slash.
   if (host === "youtu.be") {
-    const id = url.pathname.slice(1);
-    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    const id = url.pathname.split("/").filter(Boolean)[0];
+    return id ? youtube(id) : null;
   }
-  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+  if (host === "youtube.com" || host === "youtube-nocookie.com" || host === "m.youtube.com") {
     const id = url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).pop();
-    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    return id ? youtube(id) : null;
   }
-  if (host === "vimeo.com") {
+  if (host === "vimeo.com" || host === "player.vimeo.com") {
     const id = url.pathname.split("/").filter(Boolean).pop();
-    return id ? `https://player.vimeo.com/video/${id}` : null;
+    return id ? `https://player.vimeo.com/video/${id}?loop=1` : null;
   }
 
   return null;
@@ -53,6 +68,16 @@ export function DemoVideo({ src }: Props) {
   const trimmed = src?.trim() || null;
   const embed = trimmed ? embedUrl(trimmed) : null;
   const file = trimmed && !embed && isFile(trimmed) ? trimmed : null;
+
+  // A link that was set but could not be read would otherwise fall back to the
+  // placeholder in silence, which looks identical to not having set one —
+  // the most confusing possible outcome for whoever just pasted it.
+  if (trimmed && !embed && !file) {
+    console.warn(
+      `[demo-video] DEMO_VIDEO_URL is set but not recognised: ${trimmed}. ` +
+        "Expected a YouTube or Vimeo link, or a direct .mp4/.webm/.mov URL.",
+    );
+  }
 
   return (
     <section id="demo" className="hero-ink grain relative overflow-hidden text-white">
@@ -92,6 +117,7 @@ export function DemoVideo({ src }: Props) {
               <video
                 src={file}
                 controls
+                loop
                 preload="metadata"
                 playsInline
                 className="absolute inset-0 size-full bg-black object-contain"
