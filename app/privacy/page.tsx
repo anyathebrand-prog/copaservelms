@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Notice"
-      updated="1 September 2026"
+      updated="17 September 2026"
       summary="What CopaServe collects about you, why, where it is kept, and how to get it back or have it removed."
     >
       <Clause heading="Who we are">
@@ -72,6 +72,14 @@ export default function PrivacyPage() {
           profile you.
         </p>
         <p>
+          <strong className="text-foreground">What you type to Cruise,</strong> the assistant in
+          the corner of the page: your question, and your first name so it can address you. It can
+          look up your own enrolments, payments and certificates in order to answer, and can
+          re-check a payment or issue a certificate you have already earned. It cannot see anyone
+          else&rsquo;s account. Conversations are not stored — closing the tab ends them — though
+          anything it changes is recorded in our audit log like any other action.
+        </p>
+        <p>
           <strong className="text-foreground">Enquiries,</strong> if you write to us about training
           for an organisation: your name, email, and optionally a phone number, organisation and
           team size, along with what you asked. You do not need an account to send one.
@@ -117,9 +125,21 @@ export default function PrivacyPage() {
       <Clause heading="Who else processes it">
         <p>
           We use a small number of providers, each for one job: Supabase (database, authentication
-          and file storage), Vercel (hosting), Resend (email), Termii (SMS), and Paystack and
-          Flutterwave (payments). They process data on our instructions and for no purpose of their
-          own.
+          and file storage), Vercel (hosting), Sendlib (email), Termii (SMS), Kora (payments), and
+          Anthropic (the Cruise assistant). They process data on our instructions and for no
+          purpose of their own.
+        </p>
+        <p>
+          Cruise is built on Anthropic&rsquo;s Claude. When you send it a message, that message,
+          your first name, and whatever it looks up in your account to answer are sent to Anthropic
+          in the United States. Under Anthropic&rsquo;s commercial terms it is not used to train their
+          models. If you would rather
+          nothing of yours went there, do not use Cruise — nothing else on the platform depends on
+          it, and every answer it gives is available from the pages themselves.
+        </p>
+        <p>
+          Paystack processed payments taken before September 2026 and still handles refunds and
+          queries on those. New payments go through Kora.
         </p>
         <p>
           We do not sell personal data, and we do not share it with advertisers.
@@ -130,6 +150,11 @@ export default function PrivacyPage() {
         <p>
           Our database, file storage and application servers are in London, United Kingdom. Your
           data therefore leaves Nigeria.
+        </p>
+        <p>
+          Some processing happens elsewhere: messages you send to Cruise go to Anthropic in the
+          United States, payment details go directly to Kora, and email we send you passes through
+          Sendlib. Each of those providers holds only the part it needs to do its job.
         </p>
         <p>
           We chose that location because it is the closest region with the reliability this service
