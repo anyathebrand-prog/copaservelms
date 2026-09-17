@@ -1,6 +1,10 @@
 /**
  * Notification transports (PRD §6.1: Resend for email, Termii for SMS).
  *
+ * Email can also go through Sendlib, which sends from the info@copaserve.com.ng
+ * mailbox connected to it. When both are configured Sendlib wins: it is the
+ * one the business chose, and Resend was never given a key in production.
+ *
  * Same shape as the payment and storage drivers: one interface, a driver per
  * provider, and an explicit fallback when nothing is configured. The fallback
  * logs rather than throwing, because a missing email key should not break
@@ -34,6 +38,9 @@ export interface SmsDriver {
 const FROM_EMAIL = process.env.NOTIFICATION_FROM_EMAIL || "CopaServe <no-reply@copaserve.com.ng>";
 const SMS_SENDER = process.env.TERMII_SENDER_ID || "CopaServe";
 
+/** Where replies land. Unset, replies go to the sender address. */
+const REPLY_TO = process.env.NOTIFICATION_REPLY_TO || null;
+
 class ResendDriver implements EmailDriver {
   readonly id = "resend";
 
@@ -60,6 +67,64 @@ class ResendDriver implements EmailDriver {
 
       if (!response.ok) return { ok: false, error: body.message ?? response.statusText };
       return { ok: true, providerId: body.id ?? null };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+}
+
+/**
+ * Sendlib: a REST front for a connected mailbox.
+ *
+ * It sends as the mailbox connected to the key, so NOTIFICATION_FROM_EMAIL has
+ * to be that address (info@copaserve.com.ng) — a different "from" is at best
+ * rewritten and at worst rejected or sent to spam.
+ *
+ * Only the documented fields are sent. Errors come back as
+ * {"success": false, "message": ...}, so success is read from the body as well
+ * as from the status code.
+ */
+class SendlibDriver implements EmailDriver {
+  readonly id = "sendlib";
+
+  constructor(private apiKey: string) {}
+
+  async send(input: { to: string; subject: string; html: string; text: string }): Promise<Delivery> {
+    try {
+      const response = await fetch("https://sendlib.samueltuoyo.com/api/send", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: input.to,
+          subject: input.subject,
+          html: input.html,
+          ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+        }),
+        // A slow relay must not hold a request open until the function times out.
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      const body = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+        id?: string;
+        messageId?: string;
+        data?: { id?: string; messageId?: string };
+      };
+
+      if (!response.ok || body.success === false) {
+        return { ok: false, error: body.message ?? body.error ?? `HTTP ${response.status}` };
+      }
+
+      return {
+        ok: true,
+        providerId: body.messageId ?? body.id ?? body.data?.messageId ?? body.data?.id ?? null,
+      };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
@@ -116,8 +181,11 @@ class ConsoleDriver implements EmailDriver, SmsDriver {
 }
 
 export function getEmailDriver(): EmailDriver {
-  const key = process.env.RESEND_API_KEY;
-  return key ? new ResendDriver(key) : new ConsoleDriver();
+  const sendlib = process.env.SENDLIB_API_KEY;
+  if (sendlib) return new SendlibDriver(sendlib);
+
+  const resend = process.env.RESEND_API_KEY;
+  return resend ? new ResendDriver(resend) : new ConsoleDriver();
 }
 
 export function getSmsDriver(): SmsDriver {
@@ -126,7 +194,7 @@ export function getSmsDriver(): SmsDriver {
 }
 
 export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.SENDLIB_API_KEY || process.env.RESEND_API_KEY);
 }
 
 export function smsConfigured(): boolean {

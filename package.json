@@ -55,7 +55,8 @@
     "setup:storage": "tsx --env-file=.env scripts/setup-storage.ts",
     "verify:kora": "tsx --env-file=.env scripts/verify-kora.ts",
     "verify:cruise": "tsx --env-file=.env scripts/verify-cruise.ts",
-    "verify:enquiries": "tsx --env-file=.env scripts/verify-enquiries.ts"
+    "verify:enquiries": "tsx --env-file=.env scripts/verify-enquiries.ts",
+    "verify:email": "tsx --env-file=.env scripts/verify-email.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
