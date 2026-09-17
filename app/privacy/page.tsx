@@ -71,9 +71,19 @@ export default function PrivacyPage() {
           and from what IP address and browser — kept so we can show what you were told, not to
           profile you.
         </p>
+        <p>
+          <strong className="text-foreground">Enquiries,</strong> if you write to us about training
+          for an organisation: your name, email, and optionally a phone number, organisation and
+          team size, along with what you asked. You do not need an account to send one.
+        </p>
       </Clause>
 
       <Clause heading="Why we use it">
+        <p>
+          If you send an enquiry, we use what you wrote to reply to it and for nothing else. It
+          does not add you to a mailing list, and we will not email you about anything other than
+          the thing you asked about.
+        </p>
         <p>
           To run your account and deliver the courses you enrol in; to mark your work and issue
           certificates; to let employers and regulators verify those certificates; to take payment;

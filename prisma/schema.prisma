@@ -132,6 +132,12 @@ enum InstructorApplicationStatus {
   WITHDRAWN
 }
 
+enum EnquiryStatus {
+  NEW
+  IN_PROGRESS
+  CLOSED
+}
+
 enum InvoiceStatus {
   DRAFT
   ISSUED
@@ -294,6 +300,7 @@ model User {
   lessonProgress         LessonProgress[]
   instructorApplications InstructorApplication[] @relation("InstructorApplicant")
   reviewedApplications   InstructorApplication[] @relation("InstructorApplicationReviewer")
+  handledEnquiries       Enquiry[]
   invoicesAuthored       Invoice[]               @relation("InvoiceAuthor")
 
   @@index([organizationId])
@@ -1494,6 +1501,48 @@ model InvoiceLine {
 ///
 /// Deliberately not a role request in general. There is no equivalent for
 /// ADMIN: administrators are invited, never self-nominated.
+/// A corporate enquiry from the public site.
+///
+/// Deliberately not a user: the person asking has no account and should not
+/// need one to ask a question. That is the whole reason this exists rather than
+/// a mailto — an address on a public page is scraped within days, and the
+/// alternative was a button that went nowhere.
+///
+/// Rows are working correspondence, not a consent record: there is no marketing
+/// permission here and nothing may be sent to these addresses beyond a reply to
+/// what they asked. Answering somebody who wrote to you is not direct
+/// marketing; adding them to a mailing list would be.
+model Enquiry {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  email        String
+  organisation String?
+  phone        String?
+  /// Free text rather than a number: "about 40" and "two departments" are real
+  /// answers and both are more useful than a box somebody abandons.
+  staffCount   String?
+  message      String
+  status       EnquiryStatus @default(NEW)
+  /// Which page it came from, for judging where enquiries actually start.
+  source       String?
+
+  ipAddress String?
+  userAgent String?
+
+  handledById String?   @db.Uuid
+  handledAt   DateTime?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  handledBy User? @relation(fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("enquiries")
+}
+
 model InstructorApplication {
   id     String                      @id @default(uuid()) @db.Uuid
   userId String                      @db.Uuid

@@ -34,6 +34,7 @@ export type NotificationKind =
   | "organisation.invite"
   | "instructor.approved"
   | "instructor.declined"
+  | "enquiry.received"
   | "announcement";
 
 /** Kinds that are part of the service, not promotion. */
@@ -51,6 +52,9 @@ const TRANSACTIONAL: NotificationKind[] = [
   // marketing preferences say.
   "instructor.approved",
   "instructor.declined",
+  // Internal: an enquiry someone sent the business, routed to the staff who
+  // answer it. Correspondence, not a campaign.
+  "enquiry.received",
 ];
 
 export function isTransactional(kind: NotificationKind): boolean {

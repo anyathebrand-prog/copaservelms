@@ -10,7 +10,6 @@ import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { DemoVideo } from "@/components/landing/demo-video";
 import { OperatorMark, PartnerLogos } from "@/components/landing/partners";
-import { getSettings } from "@/lib/settings";
 
 /**
  * Public landing experience (PRD §7).
@@ -27,7 +26,6 @@ import { getSettings } from "@/lib/settings";
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const settings = await getSettings();
   const [featured, certificationCount, categories] = await Promise.all([
     prisma.course.findMany({
       where: { status: "PUBLISHED" },
@@ -250,24 +248,23 @@ export default async function HomePage() {
                 Corporate accounts get departments and cohorts, consolidated reporting on staff
                 completion, verifiable proof of training, and dedicated onboarding.
               </p>
-              {/* The address is a setting, not a constant: it was hardcoded to a
-                  .example placeholder, which is a reserved domain that can
-                  never receive mail, so every corporate enquiry bounced. It is
-                  now editable at /admin/settings by the people who own it.
+              {/* A page, not a mailto. This button spent its life pointing at
+                  things that could not answer an enquiry: a .example address on
+                  a reserved domain that can never receive mail, then the
+                  waitlist, which had no page under it, then signup, which sends
+                  a compliance officer asking about bulk enrolment to a
+                  registration form.
 
-                  With no address set the button goes to signup rather than
-                  to a mailto with nothing behind it — the failure this replaces
-                  was a dead link, and a fallback that is also a dead link is
-                  not a fix. It pointed at /waitlist, which was one: that
-                  path only ever had an unsubscribe route under it, never a
-                  page, and the waitlist is gone entirely now. */}
-              <a
-                href={settings.supportEmail ? `mailto:${settings.supportEmail}` : "/signup"}
+                  /contact needs no address configured, cannot bounce, and does
+                  not put a mailbox on a public page to be scraped. The enquiry
+                  lands in the database and the admins are told. */}
+              <Link
+                href="/contact"
                 className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Talk to us
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </a>
+              </Link>
             </div>
           </Reveal>
         </Section>
