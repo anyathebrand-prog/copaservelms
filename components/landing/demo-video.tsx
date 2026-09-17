@@ -26,8 +26,9 @@ type Props = { src?: string | null };
  * none, so it plays once and stops. That pair is the whole trick, and it is
  * the reason this returns a built URL rather than just an id.
  *
- * No autoplay. A page that starts making noise as you scroll past is the
- * behaviour everyone mutes the tab for; the loop is for whoever presses play.
+ * Autoplay is muted, because every browser blocks it otherwise — an unmuted
+ * autoplay is not a louder page, it is a page where nothing plays at all. The
+ * controls stay, so anyone who wants sound can turn it on.
  */
 export function embedUrl(raw: string): string | null {
   let url: URL;
@@ -40,7 +41,8 @@ export function embedUrl(raw: string): string | null {
   const host = url.hostname.replace(/^www\./, "");
 
   const youtube = (id: string) =>
-    `https://www.youtube-nocookie.com/embed/${id}?loop=1&playlist=${id}&rel=0`;
+    `https://www.youtube-nocookie.com/embed/${id}` +
+    `?loop=1&playlist=${id}&rel=0&autoplay=1&mute=1&playsinline=1`;
 
   // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, /shorts/ID,
   // /live/ID — and any of them carrying ?si=, ?t= or a trailing slash.
@@ -54,7 +56,7 @@ export function embedUrl(raw: string): string | null {
   }
   if (host === "vimeo.com" || host === "player.vimeo.com") {
     const id = url.pathname.split("/").filter(Boolean).pop();
-    return id ? `https://player.vimeo.com/video/${id}?loop=1` : null;
+    return id ? `https://player.vimeo.com/video/${id}?loop=1&autoplay=1&muted=1` : null;
   }
 
   return null;
@@ -108,16 +110,19 @@ export function DemoVideo({ src }: Props) {
               <iframe
                 src={embed}
                 title="A look inside CopaServe"
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 loading="lazy"
                 className="absolute inset-0 size-full"
               />
             ) : file ? (
+              // muted is what makes autoplay permitted at all, not a style choice.
               <video
                 src={file}
                 controls
                 loop
+                autoPlay
+                muted
                 preload="metadata"
                 playsInline
                 className="absolute inset-0 size-full bg-black object-contain"
