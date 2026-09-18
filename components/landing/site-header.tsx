@@ -30,7 +30,7 @@ export function SiteHeader({ dark = false }: { dark?: boolean }) {
 
         <nav className="hidden items-center gap-7 text-sm sm:flex">
           <Link
-            href="#courses"
+            href="/#courses"
             className={`transition ${
               dark ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-foreground"
             }`}
@@ -38,7 +38,7 @@ export function SiteHeader({ dark = false }: { dark?: boolean }) {
             Courses
           </Link>
           <Link
-            href="#verify"
+            href="/#verify"
             className={`transition ${
               dark ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-foreground"
             }`}

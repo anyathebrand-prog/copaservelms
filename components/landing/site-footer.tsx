@@ -24,18 +24,23 @@ export function SiteFooter() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">Platform</p>
           <ul className="mt-4 space-y-2.5 text-white/70">
             <li>
-              <Link href="#courses" className="transition hover:text-brand-bright">
+              <Link href="/#courses" className="transition hover:text-brand-bright">
                 Courses
               </Link>
             </li>
             <li>
-              <Link href="#verify" className="transition hover:text-brand-bright">
+              <Link href="/#verify" className="transition hover:text-brand-bright">
                 Verify a certificate
               </Link>
             </li>
             <li>
               <Link href="/signup" className="transition hover:text-brand-bright">
                 Create an account
+              </Link>
+            </li>
+            <li>
+              <Link href="/teach" className="transition hover:text-brand-bright">
+                Teach with us
               </Link>
             </li>
           </ul>

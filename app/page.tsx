@@ -269,6 +269,34 @@ export default async function HomePage() {
           </Reveal>
         </Section>
 
+        {/* 8b. Teaching. On the homepage because the people it is for are not
+            learners: it used to sit in the student sidebar, so a practitioner
+            had to create a learner account and go looking before finding out
+            they were welcome to teach at all. */}
+        <Section
+          eyebrow="For practitioners"
+          title="Teach with us,"
+          lede="and certify what you know."
+          description="Build a course in your field and issue certificates employers and regulators can verify."
+        >
+          <Reveal>
+            <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-border bg-surface p-8 sm:flex-row sm:items-center sm:p-10">
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                Instructors are approved rather than self-declared — that is what keeps the
+                certificates worth having. Tell us what you would teach and we will come back to
+                you.
+              </p>
+              <Link
+                href="/teach"
+                className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                Teach with us
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </Reveal>
+        </Section>
+
         {/* 9. Who is behind it, and who uses it. Kept apart deliberately: the
             operator is not a customer, and one heading covering both would be
             claiming an endorsement that does not exist yet. */}

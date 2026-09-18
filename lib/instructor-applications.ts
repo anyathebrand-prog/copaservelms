@@ -179,7 +179,7 @@ export async function declineApplication(
     kind: "instructor.declined",
     title: "About your application to teach",
     body: reason,
-    actionUrl: "/student/teach",
+    actionUrl: "/teach",
     channels: ["EMAIL"],
   }).catch(() => {});
 

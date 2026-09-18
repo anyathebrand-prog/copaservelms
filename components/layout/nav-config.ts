@@ -89,7 +89,6 @@ export const STUDENT_NAV: NavGroup[] = [
       { href: "/student/payments", label: "Payments", icon: CreditCard },
       { href: "/student/profile", label: "Profile", icon: User },
       { href: "/student/privacy", label: "Privacy", icon: ShieldCheck },
-      { href: "/student/teach", label: "Teach with us", icon: GraduationCap },
     ],
   },
 ];

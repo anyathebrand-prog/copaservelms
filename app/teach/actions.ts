@@ -34,7 +34,7 @@ export async function applyToTeachAction(formData: FormData): Promise<void> {
 
   if (!result.ok) throw new Error(result.detail ?? MESSAGES[result.error]);
 
-  revalidatePath("/student/teach");
+  revalidatePath("/teach");
   revalidatePath("/admin/instructors");
 }
 
@@ -44,6 +44,6 @@ export async function withdrawApplicationAction(formData: FormData): Promise<voi
   const result = await withdrawApplication(String(formData.get("applicationId") ?? ""), user.id);
   if (!result.ok) throw new Error(MESSAGES[result.error]);
 
-  revalidatePath("/student/teach");
+  revalidatePath("/teach");
   revalidatePath("/admin/instructors");
 }
