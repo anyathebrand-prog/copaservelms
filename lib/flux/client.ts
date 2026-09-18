@@ -105,7 +105,9 @@ export async function queueLessonCompletion(
   return addQueueEntrySafe(
     {
       storeName: STORE_NAME,
-      payload: { lessonId },
+      // userId travels with the entry so the endpoint can refuse it if a
+      // different learner is signed in by the time it replays.
+      payload: { lessonId, userId },
       timestamp: Date.now(),
       method: "POST",
       endpoint: ENDPOINT,

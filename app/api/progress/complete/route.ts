@@ -48,9 +48,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid body." }, { status: 400 });
   }
 
-  const lessonId = (body as { lessonId?: unknown })?.lessonId;
+  const { lessonId, userId } = (body ?? {}) as { lessonId?: unknown; userId?: unknown };
   if (typeof lessonId !== "string" || !lessonId.trim()) {
     return Response.json({ error: "Send { lessonId }." }, { status: 400 });
+  }
+
+  // The entry says whose progress it is; the session says who is asking. On a
+  // shared phone those differ — a lesson queued by one learner replaying after
+  // another has signed in. Flux can scope replay by user, but only on a paid
+  // tier with multi-tenant isolation, and a licence that fails to verify drops
+  // to the free tier silently. So this is enforced here, where it cannot be
+  // switched off by a network hiccup at a vendor.
+  //
+  // 403 rather than silently ignoring: a 4xx is permanent to the queue, so the
+  // stray entry is discarded instead of retried for ever. The other learner's
+  // completion is lost, which is the right failure — the alternative is
+  // crediting it to the wrong person, on a platform that issues certificates.
+  if (userId !== undefined && userId !== user.id) {
+    return Response.json({ error: "WRONG_ACCOUNT" }, { status: 403 });
   }
 
   const result = await markLessonComplete(user.id, lessonId.trim());

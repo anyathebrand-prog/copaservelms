@@ -77,7 +77,7 @@ export function CompleteLesson({ lessonId, userId, completed }: Props) {
       const response = await fetch("/api/progress/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId }),
+        body: JSON.stringify({ lessonId, userId }),
       });
 
       if (response.ok) {
