@@ -58,7 +58,8 @@
     "verify:enquiries": "tsx --env-file=.env scripts/verify-enquiries.ts",
     "verify:email": "tsx --env-file=.env scripts/verify-email.ts",
     "verify:categories": "tsx --env-file=.env scripts/verify-categories.ts",
-    "verify:video-url": "tsx scripts/verify-video-url.ts"
+    "verify:video-url": "tsx scripts/verify-video-url.ts",
+    "verify:offline": "tsx --env-file=.env scripts/verify-offline-progress.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
@@ -71,6 +72,7 @@
     "@scure/base": "^2.4.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "@tsworldtech/flux": "^0.3.2",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.38.0",
     "motion": "^13.1.1",

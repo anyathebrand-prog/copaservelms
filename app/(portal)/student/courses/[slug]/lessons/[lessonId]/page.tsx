@@ -6,6 +6,7 @@ import { getCourseForPlayer } from "@/lib/student";
 import { ProgressBar } from "@/components/student/progress-bar";
 import { CourseComplete } from "@/components/student/course-complete";
 import { completeLessonAction } from "../../actions";
+import { CompleteLesson } from "@/components/student/complete-lesson";
 
 export const metadata: Metadata = { title: "Lesson" };
 
@@ -118,16 +119,14 @@ export default async function LessonPage({
         )}
 
         <footer className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
+          {/* The form still posts to the server action, so the button works
+              with JavaScript unavailable or still downloading. CompleteLesson
+              takes over once it has loaded, to record the tap even when the
+              request cannot get through. */}
           <form action={completeLessonAction}>
             <input type="hidden" name="lessonId" value={lesson.id} />
             <input type="hidden" name="slug" value={slug} />
-            <button
-              type="submit"
-              disabled={lesson.completed}
-              className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-            >
-              {lesson.completed ? "Completed ✓" : "Mark as complete"}
-            </button>
+            <CompleteLesson lessonId={lesson.id} userId={user.id} completed={lesson.completed} />
           </form>
 
           <div className="ml-auto flex gap-2">
