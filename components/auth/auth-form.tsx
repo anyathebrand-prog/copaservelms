@@ -43,6 +43,7 @@ export function AuthForm({
   // "/portal" resolves the right dashboard server-side: roles live in the
   // database, so the browser cannot decide this and must not guess.
   const next = searchParams.get("next") ?? "/portal";
+  const applyingToTeach = next === "/teach";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -247,13 +248,25 @@ export function AuthForm({
 
   return (
     <div className="glass-panel rounded-2xl p-8">
+      {/* Someone arriving from "Teach with us" is not here to learn, and a
+          heading about learning made them think the application had lost its
+          questions. Say what this step is, and that the questions come next. */}
+      {applyingToTeach && (
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
+          Apply to teach · Step 1 of 2
+        </p>
+      )}
       <h1 className="font-display text-2xl font-bold tracking-tight">
         {mode === "login" ? "Welcome back" : "Create your account"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        {mode === "login"
-          ? "Sign in to continue your learning."
-          : "Start learning, get certified, and verify your credentials."}
+        {applyingToTeach
+          ? mode === "login"
+            ? "Sign in, and you will go straight to the application to teach."
+            : "First, an account — so we know who to come back to. Next you will tell us what you would teach, how comfortable you are with video, and whether you have an audience."
+          : mode === "login"
+            ? "Sign in to continue your learning."
+            : "Start learning, get certified, and verify your credentials."}
       </p>
 
       {/* The phone panel replaces the credential fields rather than sitting

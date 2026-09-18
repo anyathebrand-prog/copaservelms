@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { BootScreen } from "@/components/brand/boot-screen";
+import { FragmentSession } from "@/components/auth/fragment-session";
 
 /**
  * Lufga is declared with plain @font-face in globals.css and served from
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* First in the body so it is painted with the first frame rather than
             after the page it is covering. */}
         <BootScreen />
+        <FragmentSession />
         {children}
       </body>
     </html>
