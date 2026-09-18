@@ -30,9 +30,48 @@ export type Result<T> = { ok: true; data: T } | { ok: false; error: ApplicationE
 const MIN_BACKGROUND = 40;
 const MAX_FIELD = 2000;
 
+/**
+ * The two multiple-choice questions on the form.
+ *
+ * Defined here rather than in the page so the form and the admin review read
+ * the same wording: an answer is stored as its key, and a label changed in one
+ * place and not the other would show a reviewer something the applicant never
+ * chose.
+ */
+export const VIDEO_EXPERIENCE = [
+  { value: "BEGINNER", label: "I am a beginner" },
+  { value: "SOME_KNOWLEDGE", label: "I have some knowledge" },
+  { value: "EXPERIENCED", label: "I am experienced" },
+  { value: "VIDEOS_READY", label: "I have videos ready to upload" },
+] as const;
+
+export const AUDIENCE_SIZE = [
+  { value: "NONE", label: "Not at the moment" },
+  { value: "SMALL", label: "I have a small following" },
+  { value: "SIZABLE", label: "I have a sizable following" },
+] as const;
+
+export type VideoExperienceValue = (typeof VIDEO_EXPERIENCE)[number]["value"];
+export type AudienceSizeValue = (typeof AUDIENCE_SIZE)[number]["value"];
+
+/** The label for a stored answer, or null for an application made before the question existed. */
+export function videoExperienceLabel(value: string | null | undefined): string | null {
+  return VIDEO_EXPERIENCE.find((option) => option.value === value)?.label ?? null;
+}
+
+export function audienceSizeLabel(value: string | null | undefined): string | null {
+  return AUDIENCE_SIZE.find((option) => option.value === value)?.label ?? null;
+}
+
 export async function applyToTeach(
   userId: string,
-  input: { expertise: string; background: string; link?: string | null },
+  input: {
+    expertise: string;
+    background: string;
+    link?: string | null;
+    videoExperience?: string | null;
+    audienceSize?: string | null;
+  },
 ): Promise<Result<{ id: string }>> {
   const expertise = input.expertise.trim();
   const background = input.background.trim();
@@ -50,6 +89,17 @@ export async function applyToTeach(
   }
   if (link && !/^https?:\/\//i.test(link)) {
     return { ok: false, error: "INVALID", detail: "A link should start with http:// or https://" };
+  }
+
+  // Required on the form, but the form is a suggestion to anyone posting
+  // directly: only a listed answer is stored, never whatever string arrived.
+  const videoExperience = VIDEO_EXPERIENCE.find((o) => o.value === input.videoExperience)?.value;
+  if (!videoExperience) {
+    return { ok: false, error: "INVALID", detail: "Tell us how experienced you are with video." };
+  }
+  const audienceSize = AUDIENCE_SIZE.find((o) => o.value === input.audienceSize)?.value;
+  if (!audienceSize) {
+    return { ok: false, error: "INVALID", detail: "Tell us whether you have an audience to share with." };
   }
 
   const user = await prisma.user.findUnique({
@@ -76,6 +126,8 @@ export async function applyToTeach(
       expertise: expertise.slice(0, MAX_FIELD),
       background: background.slice(0, MAX_FIELD),
       link,
+      videoExperience,
+      audienceSize,
     },
     select: { id: true },
   });
@@ -210,6 +262,7 @@ export async function getMyApplication(userId: string) {
     orderBy: { submittedAt: "desc" },
     select: {
       id: true, status: true, expertise: true, background: true, link: true,
+      videoExperience: true, audienceSize: true,
       submittedAt: true, reviewedAt: true, decisionNote: true,
     },
   });
@@ -222,6 +275,7 @@ export async function listApplications(status?: "PENDING" | "APPROVED" | "DECLIN
     take: 200,
     select: {
       id: true, status: true, expertise: true, background: true, link: true,
+      videoExperience: true, audienceSize: true,
       submittedAt: true, reviewedAt: true, decisionNote: true,
       user: {
         select: {

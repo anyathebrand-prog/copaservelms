@@ -2,7 +2,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock, Users, XCircle } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getMyApplication } from "@/lib/instructor-applications";
+import {
+  AUDIENCE_SIZE,
+  VIDEO_EXPERIENCE,
+  audienceSizeLabel,
+  getMyApplication,
+  videoExperienceLabel,
+} from "@/lib/instructor-applications";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -183,6 +189,18 @@ function Pending({ application }: { application: Application }) {
             {application.background}
           </dd>
         </div>
+        {videoExperienceLabel(application.videoExperience) && (
+          <div>
+            <dt className="text-xs uppercase tracking-wider text-muted-foreground">With video</dt>
+            <dd className="mt-1">{videoExperienceLabel(application.videoExperience)}</dd>
+          </div>
+        )}
+        {audienceSizeLabel(application.audienceSize) && (
+          <div>
+            <dt className="text-xs uppercase tracking-wider text-muted-foreground">Audience</dt>
+            <dd className="mt-1">{audienceSizeLabel(application.audienceSize)}</dd>
+          </div>
+        )}
       </dl>
 
       <form action={withdrawApplicationAction} className="mt-6 border-t border-border pt-5">
@@ -254,6 +272,18 @@ function ApplyForm({ declined }: { declined: Application | null }) {
           </span>
         </label>
 
+        <RadioGroup
+          name="videoExperience"
+          legend="How much of a video “pro” are you?"
+          options={VIDEO_EXPERIENCE}
+        />
+
+        <RadioGroup
+          name="audienceSize"
+          legend="Do you have an audience to share your course with?"
+          options={AUDIENCE_SIZE}
+        />
+
         <SubmitButton
           pendingLabel="Sending..."
           className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
@@ -262,5 +292,49 @@ function ApplyForm({ declined }: { declined: Application | null }) {
         </SubmitButton>
       </form>
     </div>
+  );
+}
+
+/**
+ * One question, several answers, one choice.
+ *
+ * A fieldset with a legend, not a label per option: that is what makes a
+ * screen reader announce the question along with each answer, rather than
+ * reading "I am a beginner" with no idea what it answers. Each option is a
+ * whole-row label, so the tap target on a phone is the line, not the dot.
+ *
+ * required on the first radio is enough — the browser applies it to the
+ * group — and the server checks again anyway.
+ */
+function RadioGroup({
+  name,
+  legend,
+  options,
+}: {
+  name: string;
+  legend: string;
+  options: readonly { value: string; label: string }[];
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-sm font-medium">{legend}</legend>
+      <div className="space-y-2">
+        {options.map((option, index) => (
+          <label
+            key={option.value}
+            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2.5 text-sm transition hover:bg-surface-muted has-[:checked]:border-brand has-[:checked]:bg-brand-pale/40"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              required={index === 0}
+              className="size-4 shrink-0 accent-[var(--brand-green)]"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

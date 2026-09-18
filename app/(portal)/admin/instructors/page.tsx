@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { CheckCircle2, ExternalLink, GraduationCap, XCircle } from "lucide-react";
 import { requireRole } from "@/lib/roles";
-import { getApplicationSummary, listApplications } from "@/lib/instructor-applications";
+import {
+  audienceSizeLabel,
+  getApplicationSummary,
+  listApplications,
+  videoExperienceLabel,
+} from "@/lib/instructor-applications";
 import { StatCard } from "@/components/student/stat-card";
 import { EmptyState, Panel } from "@/components/ui/panel";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -89,6 +94,22 @@ export default async function InstructorApplicationsPage() {
                         {application.background}
                       </dd>
                     </div>
+                    {videoExperienceLabel(application.videoExperience) && (
+                      <div>
+                        <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                          With video
+                        </dt>
+                        <dd className="mt-1">{videoExperienceLabel(application.videoExperience)}</dd>
+                      </div>
+                    )}
+                    {audienceSizeLabel(application.audienceSize) && (
+                      <div>
+                        <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Audience
+                        </dt>
+                        <dd className="mt-1">{audienceSizeLabel(application.audienceSize)}</dd>
+                      </div>
+                    )}
                     {application.link && (
                       <div>
                         <dt className="text-xs uppercase tracking-wider text-muted-foreground">

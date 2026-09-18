@@ -45,6 +45,14 @@ export function SiteHeader({ dark = false }: { dark?: boolean }) {
           >
             Verify a certificate
           </Link>
+          <Link
+            href="/teach"
+            className={`transition ${
+              dark ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Teach with us
+          </Link>
         </nav>
 
         <div className="flex items-center gap-4">

@@ -125,6 +125,21 @@ enum PaymentProvider {
   MANUAL
 }
 
+/// How comfortable an applicant is with making course video.
+enum VideoExperience {
+  BEGINNER
+  SOME_KNOWLEDGE
+  EXPERIENCED
+  VIDEOS_READY
+}
+
+/// Whether an applicant can bring learners with them.
+enum AudienceSize {
+  NONE
+  SMALL
+  SIZABLE
+}
+
 enum InstructorApplicationStatus {
   PENDING
   APPROVED
@@ -1554,6 +1569,11 @@ model InstructorApplication {
   background String
   /// Somewhere that corroborates it — LinkedIn, a publication, a portfolio.
   link       String?
+
+  /// Nullable: applications made before these were asked have no answer, and
+  /// inventing one would put words in the applicant's mouth.
+  videoExperience VideoExperience?
+  audienceSize    AudienceSize?
 
   submittedAt DateTime @default(now())
 

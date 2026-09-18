@@ -30,6 +30,8 @@ export async function applyToTeachAction(formData: FormData): Promise<void> {
     expertise: String(formData.get("expertise") ?? ""),
     background: String(formData.get("background") ?? ""),
     link: String(formData.get("link") ?? ""),
+    videoExperience: String(formData.get("videoExperience") ?? ""),
+    audienceSize: String(formData.get("audienceSize") ?? ""),
   });
 
   if (!result.ok) throw new Error(result.detail ?? MESSAGES[result.error]);
