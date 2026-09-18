@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Notice"
-      updated="17 September 2026"
+      updated="18 September 2026"
       summary="What CopaServe collects about you, why, where it is kept, and how to get it back or have it removed."
     >
       <Clause heading="Who we are">
@@ -125,9 +125,10 @@ export default function PrivacyPage() {
       <Clause heading="Who else processes it">
         <p>
           We use a small number of providers, each for one job: Supabase (database, authentication
-          and file storage), Vercel (hosting), Sendlib (email), Termii (SMS), Kora (payments), and
-          Anthropic (the Cruise assistant). They process data on our instructions and for no
-          purpose of their own.
+          and file storage), Vercel (hosting), Sendlib (email), Termii (SMS), Kora (payments),
+          Anthropic (the Cruise assistant), and TSWorldTech (Flux, which keeps lesson progress safe
+          when your connection drops). They process data on our instructions and for no purpose of
+          their own.
         </p>
         <p>
           Cruise is built on Anthropic&rsquo;s Claude. When you send it a message, that message,
@@ -136,6 +137,13 @@ export default function PrivacyPage() {
           models. If you would rather
           nothing of yours went there, do not use Cruise — nothing else on the platform depends on
           it, and every answer it gives is available from the pages themselves.
+        </p>
+        <p>
+          Flux runs in your browser on lesson pages. To confirm our licence it contacts
+          TSWorldTech&rsquo;s servers, and that request — like any request your browser makes —
+          carries your IP address and the type of browser you use. Nothing about your courses or
+          progress goes with it: a lesson you mark complete while offline is kept on your own
+          device and sent only to us.
         </p>
         <p>
           Paystack processed payments taken before September 2026 and still handles refunds and
@@ -203,6 +211,12 @@ export default function PrivacyPage() {
           We set cookies to keep you signed in. They are necessary for the platform to work and are
           not used for advertising or cross-site tracking. Our hosting provider keeps ordinary
           server logs for security and reliability.
+        </p>
+        <p>
+          If you mark a lesson complete without a connection, your browser stores that — the
+          lesson, your account ID and the time — until it can reach us, then deletes it. It never
+          leaves your device except to come to us, and clearing your browser&rsquo;s site data
+          removes it.
         </p>
       </Clause>
 

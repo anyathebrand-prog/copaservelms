@@ -188,6 +188,40 @@ async function main() {
   });
   check("exactly one progress row, not two", activity === 1, `${activity} rows`);
 
+  // The privacy notice says a queued completion is deleted from the device
+  // once it reaches us. That is a statement about the learner's own storage,
+  // so it is checked rather than assumed from how the library ought to work.
+  // Flux deletes the entry after the server answers, so checking the instant
+  // the row appears races the deletion. Poll briefly instead.
+  const countOnDevice = () => page.evaluate(async () => {
+    const names = (await indexedDB.databases()).map((d) => d.name).filter(Boolean) as string[];
+    let entries = 0;
+    for (const name of names) {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(name);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      for (const store of Array.from(db.objectStoreNames)) {
+        if (!/queue/i.test(store)) continue;
+        entries += await new Promise<number>((resolve) => {
+          const req = db.transaction(store).objectStore(store).count();
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(-1);
+        });
+      }
+      db.close();
+    }
+    return entries;
+  });
+  let leftOnDevice = await countOnDevice();
+  for (let attempt = 0; attempt < 10 && leftOnDevice !== 0; attempt++) {
+    await page.waitForTimeout(1000);
+    leftOnDevice = await countOnDevice();
+  }
+  check("the queued entry is gone from the device once delivered", leftOnDevice === 0,
+    `${leftOnDevice} entries left`);
+
   await page.screenshot({ path: process.argv[3] ? `${process.argv[3]}/offline-progress.png` : "offline-progress.png" });
   await browser.close();
 
