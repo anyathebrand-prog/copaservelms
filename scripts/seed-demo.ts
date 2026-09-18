@@ -385,8 +385,49 @@ async function main() {
     console.log(`certificate: not issued (${issued.error}${issued.message ? ` — ${issued.message}` : ""})`);
   }
 
-  console.log("\nSign in with any account above using the demo password.\n");
+  await lockDemoAdmin(adminId);
+
+  console.log("\nSign in as the instructor or students using the demo password.");
+  console.log("The demo admin is created locked: see lockDemoAdmin() for why and how to unlock it.\n");
   await prisma.$disconnect();
+}
+
+/**
+ * Leave the seeded administrator unable to sign in.
+ *
+ * This script runs against whatever database .env points at, which here is
+ * production, and its password is in this file and in the repository. A
+ * SUPER_ADMIN with a public password on a live platform is a way in to every
+ * learner's records, payments and certificates. It happened: a routine re-seed
+ * to get test data back revived an account that had been deliberately
+ * retired, and it sat open until noticed.
+ *
+ * The account still has to exist — the demo certificate is issued in its name
+ * — so it is created, used, then deactivated and banned in auth before the
+ * script ends. Nothing about the demo needs it to be able to sign in.
+ *
+ * Set DEMO_ADMIN_UNLOCKED=1 to leave it usable, and only against a database
+ * nobody else can reach.
+ */
+async function lockDemoAdmin(adminId: string) {
+  if (process.env.DEMO_ADMIN_UNLOCKED === "1") {
+    console.warn("\n!! DEMO_ADMIN_UNLOCKED=1 — the demo SUPER_ADMIN can sign in with the public demo password.");
+    return;
+  }
+
+  const user = await prisma.user.update({
+    where: { id: adminId },
+    data: { status: "DEACTIVATED" },
+    select: { supabaseUserId: true },
+  });
+
+  if (user.supabaseUserId) {
+    const { error } = await supabase.auth.admin.updateUserById(user.supabaseUserId, {
+      ban_duration: "876000h",
+    });
+    // Fail loudly: a seed that leaves this account open must not look like success.
+    if (error) throw new Error(`could not lock the demo admin: ${error.message}`);
+  }
 }
 
 main().catch(async (error) => {
