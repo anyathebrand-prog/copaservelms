@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import { withFlux } from "@tsworldtech/flux-next/plugin";
+import { BYPASS_ROUTES, PRECACHE_ROUTES } from "./config/precache-routes";
 
 /**
  * next/image refuses any remote host that is not listed here, so an uploaded
@@ -25,6 +27,25 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "60mb",
     },
   },
+  // withFlux adds a webpack hook. Next 16 builds with Turbopack and refuses a
+  // webpack config it cannot use unless Turbopack is configured explicitly.
+  turbopack: {},
 };
 
-export default nextConfig;
+/**
+ * Flux writes public/sw.js from this config every time the config loads —
+ * under Turbopack too; its webpack hook only adds cache warming, which
+ * Turbopack skips.
+ *
+ * The worker does nothing until something registers it (FluxProvider or
+ * ServiceWorkerRegistrar from @tsworldtech/flux-next). Once registered it
+ * caches every page it serves by path alone, so the bypass list is what keeps
+ * one person's signed-in pages from being shown to the next person on the
+ * same browser. See config/precache-routes.ts.
+ */
+export default withFlux({
+  precacheRoutes: [...PRECACHE_ROUTES],
+  offlineShell: "/offline",
+  storagePrefix: "copaserve",
+  bypassRoutePrefixes: [...BYPASS_ROUTES],
+})(nextConfig);
