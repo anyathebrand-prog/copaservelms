@@ -1,5 +1,6 @@
 import {
   Award,
+  Banknote,
   BarChart3,
   Bell,
   BookOpen,
@@ -99,6 +100,7 @@ export const INSTRUCTOR_NAV: NavGroup[] = [
     items: [
       { href: "/instructor", label: "Courses", icon: BookOpen, primary: true },
       { href: "/instructor/grading", label: "Grading", icon: PenSquare, primary: true },
+      { href: "/instructor/earnings", label: "Earnings", icon: Wallet },
     ],
   },
   {
@@ -133,6 +135,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Money",
     items: [
       { href: "/admin/payments", label: "Payments", icon: CreditCard, primary: true },
+      { href: "/admin/payouts", label: "Payouts", icon: Banknote },
       { href: "/admin/coupons", label: "Coupons", icon: Ticket },
       { href: "/admin/invoices", label: "Invoices", icon: ReceiptText },
     ],

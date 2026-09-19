@@ -153,6 +153,28 @@ enum EnquiryStatus {
   CLOSED
 }
 
+/// SALE credits an instructor; REFUND takes some or all of it back.
+enum EarningKind {
+  SALE
+  REFUND
+}
+
+/// OPEN: not yet paid out. Whether it can be paid yet is not a status but a
+/// date (availableAt), so the 30-day hold ends on its own without a job that
+/// could fail to run.
+enum EarningStatus {
+  OPEN
+  IN_PAYOUT
+  PAID
+  VOID
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
 enum InvoiceStatus {
   DRAFT
   ISSUED
@@ -316,6 +338,10 @@ model User {
   instructorApplications InstructorApplication[] @relation("InstructorApplicant")
   reviewedApplications   InstructorApplication[] @relation("InstructorApplicationReviewer")
   handledEnquiries       Enquiry[]
+  earnings               InstructorEarning[]
+  payouts                InstructorPayout[]      @relation("PayoutRecipient")
+  payoutsRecorded        InstructorPayout[]      @relation("PayoutRecorder")
+  payoutAccount          PayoutAccount?
   invoicesAuthored       Invoice[]               @relation("InvoiceAuthor")
 
   @@index([organizationId])
@@ -987,10 +1013,11 @@ model Payment {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  user        User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  course      Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  enrollment  Enrollment?        @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course      Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  enrollment  Enrollment?         @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   redemptions CouponRedemption[]
+  earnings    InstructorEarning[]
 
   @@index([userId])
   @@index([status])
@@ -1556,6 +1583,98 @@ model Enquiry {
   @@index([status])
   @@index([createdAt])
   @@map("enquiries")
+}
+
+/// An instructor's share of one sale, or a deduction for one refund.
+///
+/// Amounts are kobo. A REFUND row carries a negative shareMinor, so an
+/// instructor's balance is always a plain sum over their OPEN rows — a refund
+/// that arrives after a payout is simply netted against the next one.
+model InstructorEarning {
+  id           String        @id @default(uuid()) @db.Uuid
+  instructorId String        @db.Uuid
+  paymentId    String        @db.Uuid
+  courseId     String?       @db.Uuid
+  kind         EarningKind   @default(SALE)
+  status       EarningStatus @default(OPEN)
+
+  /// What the learner paid (SALE) or had refunded (REFUND), in kobo.
+  grossMinor    Int
+  /// The instructor's part. Negative on a REFUND.
+  shareMinor    Int
+  /// CopaServe's part, for reporting. Negative on a REFUND.
+  platformMinor Int
+  /// Basis points the share was computed at, kept so a later change to the
+  /// split cannot rewrite what was owed on an earlier sale.
+  shareBps      Int
+  currency      String @default("NGN")
+
+  /// When this can first be paid out: payment date plus the hold.
+  availableAt DateTime
+  payoutId    String?   @db.Uuid
+  voidedAt    DateTime?
+  note        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instructor User              @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  payment    Payment           @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  payout     InstructorPayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  @@index([instructorId, status])
+  @@index([paymentId])
+  @@index([payoutId])
+  @@map("instructor_earnings")
+}
+
+/// One transfer to one instructor, made by an admin and recorded here.
+///
+/// The bank details are copied onto the payout when it is created: an
+/// instructor who changes their account afterwards must not change the record
+/// of where an earlier transfer went.
+model InstructorPayout {
+  id           String       @id @default(uuid()) @db.Uuid
+  instructorId String       @db.Uuid
+  amountMinor  Int
+  currency     String       @default("NGN")
+  status       PayoutStatus @default(PENDING)
+
+  bankName      String
+  accountNumber String
+  accountName   String
+
+  /// The bank transfer reference, entered when the money is sent.
+  reference    String?
+  paidAt       DateTime?
+  recordedById String?   @db.Uuid
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instructor User                @relation("PayoutRecipient", fields: [instructorId], references: [id], onDelete: Restrict)
+  recordedBy User?               @relation("PayoutRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  earnings   InstructorEarning[]
+
+  @@index([instructorId, status])
+  @@map("instructor_payouts")
+}
+
+/// Where an instructor wants to be paid.
+model PayoutAccount {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @unique @db.Uuid
+  bankName      String
+  /// A 10-digit NUBAN.
+  accountNumber String
+  accountName   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payout_accounts")
 }
 
 model InstructorApplication {

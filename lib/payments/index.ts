@@ -1,3 +1,4 @@
+import { recordSaleEarning } from "@/lib/earnings";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getPaymentDriver, type PaymentDriver, type VerifiedPayment } from "./provider";
@@ -241,15 +242,21 @@ export async function finalisePayment(
       select: { id: true },
     });
 
+    const paidAt = verified.paidAt ?? new Date();
+
     await tx.payment.update({
       where: { id: payment.id },
       data: {
         status: "SUCCESSFUL",
-        paidAt: verified.paidAt ?? new Date(),
+        paidAt,
         enrollmentId: enrollment.id,
         providerPayload: verified.raw as never,
       },
     });
+
+    // The instructor's 70%, in the same transaction as the payment itself, so
+    // one cannot be recorded without the other. Held for 30 days from paidAt.
+    await recordSaleEarning(tx, payment, paidAt);
 
     if (payment.couponCode) {
       // Redeemed on confirmation, not at checkout: an abandoned checkout must

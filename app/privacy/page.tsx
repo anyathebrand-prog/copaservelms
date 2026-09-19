@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Notice"
-      updated="18 September 2026"
+      updated="19 September 2026"
       summary="What CopaServe collects about you, why, where it is kept, and how to get it back or have it removed."
     >
       <Clause heading="Who we are">
@@ -78,6 +78,12 @@ export default function PrivacyPage() {
           re-check a payment or issue a certificate you have already earned. It cannot see anyone
           else&rsquo;s account. Conversations are not stored — closing the tab ends them — though
           anything it changes is recorded in our audit log like any other action.
+        </p>
+        <p>
+          <strong className="text-foreground">Bank details, if you teach:</strong> your bank,
+          account number and the name on the account, used only to pay you your share of sales.
+          Each payout keeps a copy of the details it was sent to, so the record of where money went
+          stays accurate if you change them later.
         </p>
         <p>
           <strong className="text-foreground">Enquiries,</strong> if you write to us about training

@@ -1,3 +1,5 @@
+import { SubmitButton } from "@/components/ui/submit-button";
+import { recordRefundAction } from "../payouts/actions";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/roles";
@@ -85,6 +87,7 @@ export default async function AdminPaymentsPage({
                 <th className="px-5 py-3 font-medium">Course</th>
                 <th className="px-5 py-3 font-medium">Amount</th>
                 <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium">Refund</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -114,6 +117,48 @@ export default async function AdminPaymentsPage({
                     >
                       {payment.status.toLowerCase()}
                     </span>
+                    {payment.refundedMinor > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {naira(payment.refundedMinor)} refunded
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    {/* Refunds are made in the gateway's dashboard; this records
+                        one so the instructor's share is taken back correctly —
+                        voided if still in the 30-day hold, or deducted from
+                        their next payout if already paid. */}
+                    {payment.status === "SUCCESSFUL" && payment.refundedMinor < payment.amountMinor ? (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-medium text-brand">Record refund</summary>
+                        <form action={recordRefundAction} className="mt-2 space-y-2">
+                          <input type="hidden" name="paymentId" value={payment.id} />
+                          <input
+                            name="amount"
+                            required
+                            inputMode="decimal"
+                            defaultValue={(payment.amountMinor - payment.refundedMinor) / 100}
+                            aria-label="Amount refunded, in naira"
+                            className="w-32 rounded-lg border border-border bg-surface px-2 py-1.5 text-xs outline-none focus:border-brand"
+                          />
+                          <input
+                            name="reason"
+                            maxLength={200}
+                            placeholder="Reason, e.g. chargeback"
+                            aria-label="Reason"
+                            className="block w-48 rounded-lg border border-border bg-surface px-2 py-1.5 text-xs outline-none focus:border-brand"
+                          />
+                          <SubmitButton
+                            pendingLabel="Saving..."
+                            className="rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+                          >
+                            Record refund
+                          </SubmitButton>
+                        </form>
+                      </details>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

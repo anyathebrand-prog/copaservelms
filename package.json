@@ -59,7 +59,8 @@
     "verify:email": "tsx --env-file=.env scripts/verify-email.ts",
     "verify:categories": "tsx --env-file=.env scripts/verify-categories.ts",
     "verify:video-url": "tsx scripts/verify-video-url.ts",
-    "verify:email-links": "tsx --env-file=.env scripts/verify-email-links.ts"
+    "verify:email-links": "tsx --env-file=.env scripts/verify-email-links.ts",
+    "verify:earnings": "tsx --env-file=.env scripts/verify-earnings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

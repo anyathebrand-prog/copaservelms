@@ -277,7 +277,7 @@ export default async function HomePage() {
           eyebrow="For practitioners"
           title="Teach with us,"
           lede="and certify what you know."
-          description="Build a course in your field and issue certificates employers and regulators can verify."
+          description="Build a course in your field, keep 70% of every sale, and issue certificates employers and regulators can verify."
         >
           <Reveal>
             <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-border bg-surface p-8 sm:flex-row sm:items-center sm:p-10">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock, Users, XCircle } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock, Users, Wallet, XCircle } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import {
   AUDIENCE_SIZE,
@@ -49,12 +49,17 @@ const REASONS = [
     title: "Certificates that mean something",
     body: "Every certificate carries a credential anyone can check, so what your learners earn holds up with an employer.",
   },
-  // Deliberately says nothing about instructor pay: there is no payout or
-  // revenue share in the platform, and a public page must not promise one.
+  // Worded from lib/earnings.ts, which is what actually pays instructors. If
+  // the split, hold or minimum changes there, this sentence must change too.
+  {
+    icon: Wallet,
+    title: "Keep 70% of every sale",
+    body: "Set your price and we handle payment, enrolment and the certificate. Each sale clears after 30 days, and we pay out once you reach ₦20,000.",
+  },
   {
     icon: BookOpen,
     title: "Your course, built your way",
-    body: "Lessons, quizzes and assignments in one place. Set the price or run it free — we handle enrolment, payment and the certificate.",
+    body: "Lessons, quizzes and assignments in one place, or run it free if you would rather.",
   },
 ];
 

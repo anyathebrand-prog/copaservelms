@@ -19,7 +19,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="1 September 2026"
+      updated="19 September 2026"
       summary="The terms on which CopaServe is provided, and what a certificate from us does and does not mean."
     >
       <Clause heading="Who provides this service">
@@ -80,7 +80,7 @@ export default function TermsPage() {
       <Clause heading="Payment and refunds">
         <p>
           Prices are shown in naira and include any applicable tax unless stated otherwise. Payment
-          is taken by Paystack or Flutterwave; we never see your card details.
+          is taken by Kora; we never see your card details.
         </p>
         <p>
           If a course is not what was described, or the platform prevented you from taking it, tell
@@ -90,6 +90,24 @@ export default function TermsPage() {
         <p>
           Corporate purchases are governed by the invoice and any separate agreement, which take
           precedence over this section.
+        </p>
+      </Clause>
+
+      <Clause heading="If you teach on CopaServe">
+        <p>
+          You receive 70% of what a learner pays for your course, after any discount; CopaServe
+          keeps 30%, from which it also pays the payment provider&rsquo;s fees. Free courses earn
+          nothing.
+        </p>
+        <p>
+          Each sale is held for 30 days from payment before it can be paid out, so that a refund or
+          chargeback in that time is settled first. Once the sales that have cleared add up to at
+          least ₦20,000, we pay them to the bank account you give us.
+        </p>
+        <p>
+          If a sale is refunded or charged back while it is held, you are not paid for it. If it is
+          refunded after you have been paid, your share of the refund is taken from your next
+          payout. You can see every sale, what is held and what has been paid on your Earnings page.
         </p>
       </Clause>
 
