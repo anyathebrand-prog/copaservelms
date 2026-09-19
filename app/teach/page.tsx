@@ -17,7 +17,7 @@ import { applyToTeachAction, withdrawApplicationAction } from "./actions";
 export const metadata: Metadata = {
   title: "Teach on CopaServe",
   description:
-    "Teach data protection, compliance, cybersecurity or governance to professionals, with certificates employers can verify.",
+    "Teach what you know on CopaServe, keep 70% of every sale, and give learners a certificate anyone can verify.",
 };
 
 // Personalised for anyone signed in: it shows their own application.
@@ -41,8 +41,8 @@ export const dynamic = "force-dynamic";
 const REASONS = [
   {
     icon: Users,
-    title: "Professionals who need what you know",
-    body: "Compliance officers, DPOs, IT and risk teams — people learning because their job or their regulator requires it.",
+    title: "Learners who want what you know",
+    body: "People come here to learn skills they can put to use, and to earn a certificate that proves it.",
   },
   {
     icon: BadgeCheck,
