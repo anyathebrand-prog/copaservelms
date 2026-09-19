@@ -1,0 +1,23 @@
+{
+  "name": "CopaServe — Learn. Get Certified. Verify.",
+  "short_name": "CopaServe",
+  "description": "Professional certification in data protection, compliance, cybersecurity and governance, with certificates anyone can verify.",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#04170a",
+  "theme_color": "#04170a",
+  "categories": ["education", "business", "productivity"],
+  "lang": "en-NG",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My courses", "url": "/student/courses" },
+    { "name": "Verify a certificate", "url": "/verify" }
+  ]
+}

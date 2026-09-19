@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { BootScreen } from "@/components/brand/boot-screen";
 import { FragmentSession } from "@/components/auth/fragment-session";
+import { FLUX_SW_INITIALIZER_CODE } from "@tsworldtech/flux-next";
+import { FluxClientWrapper } from "@/components/flux/flux-client-wrapper";
 
 /**
  * Lufga is declared with plain @font-face in globals.css and served from
@@ -28,6 +30,8 @@ export const metadata: Metadata = {
   },
   description:
     "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.",
+  // One manifest, at the path Flux's service worker expects and caches.
+  manifest: "/manifest.json",
 };
 
 /** Every weight is on screen at first paint, and all four together are ~68KB. */
@@ -37,6 +41,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <head>
+        {/* Before anything else runs: marks when the service worker is ready,
+            so Flux knows whether it can serve offline yet. It only listens —
+            it registers and caches nothing itself. */}
+        <script id="flux-sw-init" dangerouslySetInnerHTML={{ __html: FLUX_SW_INITIALIZER_CODE }} />
         {WEIGHTS.map((weight) => (
           <link
             key={weight}
@@ -53,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             after the page it is covering. */}
         <BootScreen />
         <FragmentSession />
-        {children}
+        <FluxClientWrapper>{children}</FluxClientWrapper>
       </body>
     </html>
   );
