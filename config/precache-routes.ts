@@ -13,25 +13,23 @@
  */
 
 /** Public pages, identical for every visitor, fetched ahead of time. */
-export const PRECACHE_ROUTES = ["/", "/courses", "/contact", "/privacy", "/terms", "/offline"] as const;
-
-/** Never cached, never served from cache. Matched by prefix. */
-export const BYPASS_ROUTES = [
-  // Signed-in areas: dashboards, earnings, bank details, payouts.
+export const PRECACHE_ROUTES = ["/", "/courses", "/contact", "/privacy", "/terms", "/offline",  // Signed-in areas: dashboards, earnings, bank details, payouts.
   "/student",
   "/instructor",
   "/admin",
   "/portal",
-
-  // Public addresses that show something different when you are signed in.
-  "/courses/", // a course page shows your enrolment and checkout — the list at /courses is fine
-  "/teach", // shows your own application
-
-  // Signing in, and everything around it.
+  "/courses/",
+  "/teach",
   "/login",
   "/signup",
   "/forgot-password",
   "/reset-password",
+] as const;
+
+/** Never cached, never served from cache. Matched by prefix. */
+export const BYPASS_ROUTES = [
+
+// Signing in, and everything around it.
   "/two-factor",
   "/auth",
 

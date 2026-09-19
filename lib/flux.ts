@@ -15,7 +15,7 @@ import { createFlux, createNoopAdapter } from "@tsworldtech/flux";
  */
 export const flux = createFlux({
   adapter: createNoopAdapter(),
-  license: process.env.NEXT_PUBLIC_FLUX_LICENSE_TOKEN,
+  license: process.env.FLUX_LICENSE_TOKEN,
   // Must match storagePrefix in next.config.ts, which names the worker's store.
   storagePrefix: "copaserve",
   onStorageFallback: (layer, reason) => {
