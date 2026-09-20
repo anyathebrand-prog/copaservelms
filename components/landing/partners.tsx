@@ -60,6 +60,15 @@ export const PARTNERS: Partner[] = [
     width: 512,
     height: 140,
   },
+  {
+    // Supplied on a white canvas with the mark occupying a third of it, so the
+    // stored file is trimmed to the artwork and the white lifted to
+    // transparency — otherwise it renders as a white card on a grey section.
+    name: "Flux",
+    logo: "/brand/partners/flux.png",
+    width: 512,
+    height: 150,
+  },
 ];
 
 /**
