@@ -46,24 +46,37 @@ export const PARTNERS: Partner[] = [
     width: 512,
     height: 503,
   },
+  {
+    // Alt text is the name alone. The tagline in the artwork reads "Your
+    // trusted crypto paddy", and there is no reason to copy that wording into
+    // the page text: the row credits a partner, it does not advertise what
+    // they sell, and this domain is already being judged on how much crypto
+    // vocabulary its markup carries.
+    name: "gidSwap",
+    logo: "/brand/partners/gidswap.png",
+    width: 512,
+    height: 232,
+  },
 ];
 
 /**
  * How much room one logo gets in the row.
  *
- * A wide wordmark and a round badge cannot share a single rule. Capping both
- * at the same height makes the badge unreadable — the rim lettering on a 32px
- * circle is a smudge — while capping both at the same width makes the wordmark
- * tower over everything else. So the artwork's own aspect ratio decides which
- * dimension does the clamping, and the two caps are chosen to carry roughly
+ * A wide wordmark, a stacked lockup and a round badge cannot share a single
+ * rule. Capping them all at the same height makes the badge unreadable — the
+ * rim lettering on a 32px circle is a smudge — while capping them all at the
+ * same width makes the wordmark tower over everything else. So the artwork's
+ * own aspect ratio picks the bucket, and the caps are chosen to carry roughly
  * equal visual weight rather than equal pixels.
  *
  * Derived rather than configured, so adding a partner stays one entry above
  * with no styling decision attached to it.
  */
 function sizing(partner: Partner): string {
-  const isBadge = partner.width / partner.height < 1.6;
-  return isBadge ? "max-h-20 max-w-20" : "max-h-8 max-w-[170px]";
+  const ratio = partner.width / partner.height;
+  if (ratio < 1.6) return "max-h-20 max-w-20"; // round badge
+  if (ratio < 4) return "max-h-12 max-w-[150px]"; // stacked lockup
+  return "max-h-8 max-w-[170px]"; // wide wordmark
 }
 
 function Logo({ partner, className = "" }: { partner: Partner; className?: string }) {
