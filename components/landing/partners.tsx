@@ -16,6 +16,11 @@ import Image from "next/image";
  *
  * Logos live in public/brand/partners/. Adding one is a line here plus the
  * file — no component changes.
+ *
+ * Replacing one is not: give the new artwork a new filename. /_next/image
+ * caches the optimised bitmap against the source path, so writing different
+ * artwork to the same name serves the old picture from cache while the markup
+ * reports the new dimensions — which looks like a layout bug and is not one.
  */
 
 export type Partner = {
@@ -47,15 +52,13 @@ export const PARTNERS: Partner[] = [
     height: 503,
   },
   {
-    // Alt text is the name alone. The tagline in the artwork reads "Your
-    // trusted crypto paddy", and there is no reason to copy that wording into
-    // the page text: the row credits a partner, it does not advertise what
-    // they sell, and this domain is already being judged on how much crypto
-    // vocabulary its markup carries.
+    // The wordmark without its tagline, at the partner's own direction. Alt
+    // text is the name alone for the same reason it always is here: the row
+    // credits a partner, it does not advertise what they sell.
     name: "gidSwap",
-    logo: "/brand/partners/gidswap.png",
+    logo: "/brand/partners/gidswap-wordmark.png",
     width: 512,
-    height: 232,
+    height: 140,
   },
 ];
 
