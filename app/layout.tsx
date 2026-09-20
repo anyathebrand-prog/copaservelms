@@ -25,8 +25,23 @@ import { FluxClientWrapper } from "@/components/flux/flux-client-wrapper";
  */
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.copaserve.com.ng").replace(/\/$/, "");
 
+/**
+ * The title and description below are deliberately free of wallet and minting
+ * language, and that is not cosmetic.
+ *
+ * These two strings are the first thing every automated reader sees — search
+ * engines, link scrapers, and the reputation classifiers that payment
+ * processors and social platforms run. A young .com.ng domain with a sign-in
+ * form and crypto vocabulary in its title reads, to a classifier that counts
+ * words rather than understanding them, like a phishing site: X refused to
+ * accept a link to this domain on that basis.
+ *
+ * On-chain certificates are still offered and still described on the homepage.
+ * They are a feature of the product, not the pitch, and the metadata now says
+ * so. "Emerging Technologies" covers them without spending the token.
+ */
 const DESCRIPTION =
-  "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.";
+  "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Cybersecurity and Emerging Technologies — every course ending in a certificate anyone can verify.";
 
 /**
  * Shared by every page, and overridden per page where it should be.
@@ -42,7 +57,7 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "CopaServe — Learn. Get Certified. Verify. Mint.",
+    default: "CopaServe — Learn. Get Certified. Verify.",
     template: "%s · CopaServe",
   },
   description: DESCRIPTION,
