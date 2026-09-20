@@ -5,8 +5,21 @@ import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { Card } from "@/components/ui/card";
 import { CourseCover } from "@/components/course/course-cover";
+import { shareMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Courses" };
+const CATALOGUE_DESCRIPTION =
+  "Every course on CopaServe: data protection, compliance, governance, cybersecurity and emerging technologies, each ending in a certificate anyone can verify.";
+
+export const metadata: Metadata = {
+  title: "Courses",
+  description: CATALOGUE_DESCRIPTION,
+  // Filtering by category shows the same catalogue, so ?category=... points here.
+  ...shareMetadata({
+    title: "Courses on CopaServe",
+    description: CATALOGUE_DESCRIPTION,
+    url: "/courses",
+  }),
+};
 export const revalidate = 300;
 
 /** Public catalogue. Only published courses appear. */

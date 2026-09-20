@@ -9,9 +9,16 @@ import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { enrolAction } from "../actions";
 import { CourseCover } from "@/components/course/course-cover";
+import { SITE_OG_IMAGE } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * A course link is the one people actually paste into WhatsApp and LinkedIn,
+ * so it gets the course's own cover as its share picture rather than the site
+ * card. An unpublished or missing slug is told not to be indexed: the page
+ * itself is a 404, and a 404 that search engines keep re-listing is noise.
+ */
 export async function generateMetadata({
   params,
 }: {
@@ -20,12 +27,33 @@ export async function generateMetadata({
   const { slug } = await params;
   const course = await prisma.course.findFirst({
     where: { slug, status: "PUBLISHED" },
-    select: { title: true, subtitle: true },
+    select: { title: true, subtitle: true, thumbnailUrl: true },
   });
 
-  return course
-    ? { title: course.title, description: course.subtitle ?? undefined }
-    : { title: "Course not found" };
+  if (!course) {
+    return { title: "Course not found", robots: { index: false, follow: false } };
+  }
+
+  const description = course.subtitle ?? undefined;
+  const url = `/courses/${slug}`;
+  // A cover only shares if it is already a full, public URL — banners live in
+  // a public bucket, so they are. The site picture follows it rather than
+  // replacing it: banners are stored as WebP, which some link scrapers still
+  // refuse, and those fall through to the second image instead of showing none.
+  const images = course.thumbnailUrl?.startsWith("http")
+    ? [
+        { url: course.thumbnailUrl, width: 1280, height: 720, alt: course.title },
+        ...SITE_OG_IMAGE,
+      ]
+    : SITE_OG_IMAGE;
+
+  return {
+    title: course.title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "article", title: course.title, description, url, images },
+    twitter: { title: course.title, description, images },
+  };
 }
 
 /**

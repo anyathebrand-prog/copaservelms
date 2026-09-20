@@ -1,11 +1,19 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Clause, LegalPage } from "@/components/landing/legal-page";
+import { shareMetadata } from "@/lib/seo";
+
+const PRIVACY_DESCRIPTION =
+  "How CopaServe collects, uses and protects personal data, under the Nigeria Data Protection Act.";
 
 export const metadata: Metadata = {
   title: "Privacy Notice",
-  description:
-    "How CopaServe collects, uses and protects personal data, under the Nigeria Data Protection Act.",
+  description: PRIVACY_DESCRIPTION,
+  ...shareMetadata({
+    title: "CopaServe Privacy Notice",
+    description: PRIVACY_DESCRIPTION,
+    url: "/privacy",
+  }),
 };
 
 /**

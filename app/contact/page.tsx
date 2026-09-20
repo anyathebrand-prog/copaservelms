@@ -3,11 +3,19 @@ import { Building2, ClipboardCheck, Users } from "lucide-react";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { ContactForm } from "@/components/landing/contact-form";
+import { shareMetadata } from "@/lib/seo";
+
+const CONTACT_DESCRIPTION =
+  "Training compliance, governance and data protection teams across an organisation — bulk enrolment, cohorts and reporting.";
 
 export const metadata: Metadata = {
   title: "Talk to us",
-  description:
-    "Training compliance, governance and data protection teams across an organisation — bulk enrolment, cohorts and reporting.",
+  description: CONTACT_DESCRIPTION,
+  ...shareMetadata({
+    title: "Talk to us about training your team",
+    description: CONTACT_DESCRIPTION,
+    url: "/contact",
+  }),
 };
 
 /**

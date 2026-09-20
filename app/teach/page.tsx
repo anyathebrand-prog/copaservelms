@@ -12,12 +12,20 @@ import {
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { shareMetadata } from "@/lib/seo";
 import { applyToTeachAction, withdrawApplicationAction } from "./actions";
+
+const TEACH_DESCRIPTION =
+  "Teach what you know on CopaServe, keep 70% of every sale, and give learners a certificate anyone can verify.";
 
 export const metadata: Metadata = {
   title: "Teach on CopaServe",
-  description:
-    "Teach what you know on CopaServe, keep 70% of every sale, and give learners a certificate anyone can verify.",
+  description: TEACH_DESCRIPTION,
+  ...shareMetadata({
+    title: "Teach on CopaServe",
+    description: TEACH_DESCRIPTION,
+    url: "/teach",
+  }),
 };
 
 // Personalised for anyone signed in: it shows their own application.

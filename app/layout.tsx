@@ -23,15 +23,58 @@ import { FluxClientWrapper } from "@/components/flux/flux-client-wrapper";
  * What next/font would have done for us is replaced explicitly: the files are
  * preloaded below, and font-display: swap is set on each face.
  */
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.copaserve.com.ng").replace(/\/$/, "");
+
+const DESCRIPTION =
+  "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.";
+
+/**
+ * Shared by every page, and overridden per page where it should be.
+ *
+ * metadataBase is what turns a relative path into the absolute URL that
+ * WhatsApp, X and LinkedIn require: without it, share previews resolve
+ * against nothing and silently show no image at all.
+ *
+ * Each page sets its own canonical. Pages reachable at more than one address —
+ * with a tracking parameter on the end, say — otherwise look like several
+ * pages with the same content.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "CopaServe — Learn. Get Certified. Verify. Mint.",
     template: "%s · CopaServe",
   },
-  description:
-    "Nigeria's next-generation professional learning platform for Data Protection, Compliance, Governance, Web3, Cybersecurity and Emerging Technologies.",
+  description: DESCRIPTION,
+  applicationName: "CopaServe",
   // One manifest, at the path Flux's service worker expects and caches.
   manifest: "/manifest.json",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "CopaServe",
+    locale: "en_NG",
+    url: SITE_URL,
+    title: "CopaServe — Learn. Get Certified. Verify.",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CopaServe — Learn. Get Certified. Verify.",
+    description: DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      // Without this, Google shows a thumbnail at best; certificates and
+      // course pages are worth a proper image in the result.
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 /** Every weight is on screen at first paint, and all four together are ~68KB. */

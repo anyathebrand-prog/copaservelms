@@ -1,10 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Clause, LegalPage } from "@/components/landing/legal-page";
+import { shareMetadata } from "@/lib/seo";
+
+const TERMS_DESCRIPTION = "The terms on which CopaServe is provided.";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "The terms on which CopaServe is provided.",
+  description: TERMS_DESCRIPTION,
+  ...shareMetadata({
+    title: "CopaServe Terms of Service",
+    description: TERMS_DESCRIPTION,
+    url: "/terms",
+  }),
 };
 
 /**
