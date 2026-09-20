@@ -7,8 +7,12 @@ import Image from "next/image";
  * not an institution CopaServe "works with", and putting the operator's own
  * logo under a "Trusted by" heading is the kind of claim a compliance buyer is
  * trained to check. Separating them means the parent company can be shown
- * prominently and honestly, and the partner row stays empty until there is
+ * prominently and honestly, and nothing goes in the partner row until there is
  * something real to put in it.
+ *
+ * The row is not only institutions — Inside The Hive is a community. The
+ * heading on the homepage says so, because a community listed under a claim
+ * about institutions is the same overstatement in the other direction.
  *
  * Logos live in public/brand/partners/. Adding one is a line here plus the
  * file — no component changes.
@@ -34,8 +38,33 @@ export const OPERATOR: Partner = {
   height: 53,
 };
 
-/** Institutions that actually use CopaServe. Empty until one is confirmed. */
-export const PARTNERS: Partner[] = [];
+/** Institutions and communities that actually work with CopaServe. */
+export const PARTNERS: Partner[] = [
+  {
+    name: "Inside The Hive",
+    logo: "/brand/partners/inside-the-hive.png",
+    width: 512,
+    height: 503,
+  },
+];
+
+/**
+ * How much room one logo gets in the row.
+ *
+ * A wide wordmark and a round badge cannot share a single rule. Capping both
+ * at the same height makes the badge unreadable — the rim lettering on a 32px
+ * circle is a smudge — while capping both at the same width makes the wordmark
+ * tower over everything else. So the artwork's own aspect ratio decides which
+ * dimension does the clamping, and the two caps are chosen to carry roughly
+ * equal visual weight rather than equal pixels.
+ *
+ * Derived rather than configured, so adding a partner stays one entry above
+ * with no styling decision attached to it.
+ */
+function sizing(partner: Partner): string {
+  const isBadge = partner.width / partner.height < 1.6;
+  return isBadge ? "max-h-20 max-w-20" : "max-h-8 max-w-[170px]";
+}
 
 function Logo({ partner, className = "" }: { partner: Partner; className?: string }) {
   return (
@@ -75,7 +104,7 @@ export function PartnerLogos() {
   if (PARTNERS.length === 0) {
     return (
       <p className="rounded-3xl border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-        Partner institution logos appear here once launch partners are confirmed.
+        Partner logos appear here once launch partners are confirmed.
       </p>
     );
   }
@@ -90,7 +119,7 @@ export function PartnerLogos() {
               a tall one by height, and neither is distorted. */}
           <Logo
             partner={partner}
-            className="h-auto max-h-8 w-auto max-w-[170px] object-contain opacity-60 grayscale transition hover:opacity-100 hover:grayscale-0"
+            className={`h-auto w-auto object-contain opacity-60 grayscale transition hover:opacity-100 hover:grayscale-0 ${sizing(partner)}`}
           />
         </li>
       ))}

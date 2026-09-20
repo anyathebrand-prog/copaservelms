@@ -300,7 +300,7 @@ export default async function HomePage() {
         {/* 9. Who is behind it, and who uses it. Kept apart deliberately: the
             operator is not a customer, and one heading covering both would be
             claiming an endorsement that does not exist yet. */}
-        <Section muted eyebrow="Trusted by" title="Institutions we work with">
+        <Section muted eyebrow="Trusted by" title="Who we work with">
           <div className="space-y-10">
             <OperatorMark />
             <PartnerLogos />
