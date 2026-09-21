@@ -232,7 +232,25 @@ async function main() {
   await prisma.enrollment.create({ data: { userId: learner.appUserId, courseId: course.id, status: "ACTIVE" } });
 
   const player = await learner.context.newPage();
+
+  // On the live site the service worker is part of the path under test: the
+  // lesson page and the video request both pass through it. It is switched
+  // off on localhost, so there this is skipped rather than failed.
+  if (BASE.startsWith("https")) {
+    await player.goto(`${BASE}/`, { waitUntil: "load" });
+    const controlled = await player.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      for (let i = 0; i < 20 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 500));
+      return Boolean(navigator.serviceWorker.controller);
+    });
+    if (!controlled) await player.reload({ waitUntil: "load" });
+  }
+
   await player.goto(`${BASE}/student/courses/${course.slug}/lessons/${videoLesson}`, { waitUntil: "load" });
+  if (BASE.startsWith("https")) {
+    const underWorker = await player.evaluate(() => Boolean(navigator.serviceWorker.controller));
+    check("the service worker is controlling the lesson page", underWorker);
+  }
   const html = await player.content();
   check("no expiring storage link is written into the lesson page",
     !html.includes("token=") && !html.includes("/object/sign/"));
