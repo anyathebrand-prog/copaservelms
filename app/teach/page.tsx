@@ -11,6 +11,7 @@ import {
 } from "@/lib/instructor-applications";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
+import { TeachIllustration } from "@/components/landing/teach-illustration";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { shareMetadata } from "@/lib/seo";
 import { applyToTeachAction, withdrawApplicationAction } from "./actions";
@@ -82,17 +83,23 @@ export default async function TeachPage() {
 
       <main className="flex-1">
         <div className="mx-auto max-w-5xl px-6 py-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">
-            For practitioners
-          </p>
-          <h1 className="mt-3 max-w-2xl font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
-            Teach what you know,
-            <span className="block text-muted-foreground">to people who need it.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Instructors on CopaServe are approved, not self-declared — that is what makes the
-            certificates worth having. Tell us what you would teach and we will come back to you.
-          </p>
+          <div className="grid items-center gap-8 lg:grid-cols-[1fr_380px]">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">
+                For practitioners
+              </p>
+              <h1 className="mt-3 max-w-2xl font-display text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+                Teach what you know,
+                <span className="block text-muted-foreground">to people who need it.</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                Instructors on CopaServe are approved, not self-declared — that is what makes the
+                certificates worth having. Tell us what you would teach and we will come back to you.
+              </p>
+            </div>
+
+            <TeachIllustration />
+          </div>
 
           <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
             <div className="min-w-0 rounded-3xl border border-border bg-surface p-6 sm:p-8">
