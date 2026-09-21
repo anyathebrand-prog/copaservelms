@@ -9,6 +9,7 @@
  *   npx tsx scripts/verify-video-url.ts
  */
 import { embedUrl } from "../components/landing/demo-video";
+import { embedSrc, parseVideoLink } from "../lib/video-embed";
 
 const CASES: [string, string | null][] = [
   ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?loop=1&playlist=dQw4w9WgXcQ&rel=0&autoplay=1&mute=1&playsinline=1"],
@@ -25,6 +26,23 @@ const CASES: [string, string | null][] = [
   ["https://drive.google.com/file/d/abc/view", null],
 ];
 
+/**
+ * Lesson videos: the same links, played the way a lesson should be — waiting
+ * for the learner, with sound, once. Unlisted Vimeo is the case that matters:
+ * its private hash must reach the player, or the embed refuses to play.
+ */
+const LESSON_CASES: [string, string | null][] = [
+  ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&playsinline=1"],
+  ["https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123&index=2", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&playsinline=1"],
+  ["https://vimeo.com/123456789", "https://player.vimeo.com/video/123456789?byline=0&portrait=0"],
+  ["https://vimeo.com/123456789/abc123def4", "https://player.vimeo.com/video/123456789?h=abc123def4&byline=0&portrait=0"],
+  ["https://player.vimeo.com/video/123456789?h=abc123def4&badge=0", "https://player.vimeo.com/video/123456789?h=abc123def4&byline=0&portrait=0"],
+  ["https://vimeo.com/channels/staffpicks/123456789", "https://player.vimeo.com/video/123456789?byline=0&portrait=0"],
+  ["https://www.youtube.com/watch?v=tooshort", null],
+  ["javascript:alert(1)", null],
+  ["https://example.com/lecture.mp4", null],
+];
+
 let passed = 0;
 for (const [input, expected] of CASES) {
   const actual = embedUrl(input);
@@ -33,5 +51,15 @@ for (const [input, expected] of CASES) {
   console.log(`${ok ? "PASS  " : "FAIL  "}${input}\n        -> ${actual}`);
 }
 
-console.log(`\n${passed}/${CASES.length} passed`);
-process.exit(passed === CASES.length ? 0 : 1);
+console.log("\n--- lesson player ---");
+for (const [input, expected] of LESSON_CASES) {
+  const link = parseVideoLink(input);
+  const actual = link ? embedSrc(link, "lesson") : null;
+  const ok = actual === expected;
+  if (ok) passed += 1;
+  console.log(`${ok ? "PASS  " : "FAIL  "}${input}\n        -> ${actual}`);
+}
+
+const total = CASES.length + LESSON_CASES.length;
+console.log(`\n${passed}/${total} passed`);
+process.exit(passed === total ? 0 : 1);

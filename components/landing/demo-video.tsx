@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { embedSrc, parseVideoLink } from "@/lib/video-embed";
 
 /**
  * The closing section of the landing page: a look at the product working.
@@ -23,48 +24,14 @@ import { Play } from "lucide-react";
 type Props = { src?: string | null };
 
 /**
- * Turns a YouTube or Vimeo link — in any of the shapes people paste — into an
- * embed URL that loops.
+ * A YouTube or Vimeo link, as an embed URL that loops on its own, muted.
  *
- * YouTube needs the video's own id repeated as `playlist` for `loop=1` to do
- * anything: on its own, loop applies to a playlist, and a single video has
- * none, so it plays once and stops. That pair is the whole trick, and it is
- * the reason this returns a built URL rather than just an id.
- *
- * Autoplay is muted, because every browser blocks it otherwise — an unmuted
- * autoplay is not a louder page, it is a page where nothing plays at all. The
- * controls stay, so anyone who wants sound can turn it on.
+ * Recognising the link lives in lib/video-embed.ts, shared with the lesson
+ * player; only the "ambient" way of playing it is this section's.
  */
 export function embedUrl(raw: string): string | null {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return null;
-  }
-
-  const host = url.hostname.replace(/^www\./, "");
-
-  const youtube = (id: string) =>
-    `https://www.youtube-nocookie.com/embed/${id}` +
-    `?loop=1&playlist=${id}&rel=0&autoplay=1&mute=1&playsinline=1`;
-
-  // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, /shorts/ID,
-  // /live/ID — and any of them carrying ?si=, ?t= or a trailing slash.
-  if (host === "youtu.be") {
-    const id = url.pathname.split("/").filter(Boolean)[0];
-    return id ? youtube(id) : null;
-  }
-  if (host === "youtube.com" || host === "youtube-nocookie.com" || host === "m.youtube.com") {
-    const id = url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).pop();
-    return id ? youtube(id) : null;
-  }
-  if (host === "vimeo.com" || host === "player.vimeo.com") {
-    const id = url.pathname.split("/").filter(Boolean).pop();
-    return id ? `https://player.vimeo.com/video/${id}?loop=1&autoplay=1&muted=1` : null;
-  }
-
-  return null;
+  const link = parseVideoLink(raw);
+  return link ? embedSrc(link, "ambient") : null;
 }
 
 function isFile(raw: string): boolean {

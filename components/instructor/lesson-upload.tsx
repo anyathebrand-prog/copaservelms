@@ -83,12 +83,15 @@ export function LessonUpload({
   accept,
   maxBytes,
   current,
+  hint,
 }: {
   lessonId: string;
   accept: string;
   maxBytes: number;
   /** The file already on this lesson, if one was uploaded. */
   current: { name: string; viewHref: string } | null;
+  /** A line of guidance under the limit, when there is a better route. */
+  hint?: string;
 }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -168,6 +171,7 @@ export function LessonUpload({
           ) : (
             <p className="text-xs text-muted-foreground">
               PDF, video (MP4, WebM, MOV) or audio · up to {megabytes(maxBytes)}
+              {hint && <span className="block">{hint}</span>}
             </p>
           )}
         </div>

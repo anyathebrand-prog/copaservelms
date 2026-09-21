@@ -169,6 +169,10 @@ async function main() {
               create: [
                 { title: "Welcome video", type: "VIDEO", position: 1 },
                 { title: "Week one reading", type: "PDF", position: 2 },
+                // Pasted links: the route for anything over the upload limit.
+                { title: "Guest lecture", type: "VIDEO", position: 3, contentUrl: "https://youtu.be/dQw4w9WgXcQ?si=share" },
+                { title: "Panel recording", type: "VIDEO", position: 4, contentUrl: "https://vimeo.com/123456789/abc123def4" },
+                { title: "Drive video", type: "VIDEO", position: 5, contentUrl: "https://drive.google.com/file/d/abc/view" },
               ],
             },
           },
@@ -178,7 +182,7 @@ async function main() {
     select: { id: true, slug: true, modules: { select: { lessons: { orderBy: { position: "asc" }, select: { id: true } } } } },
   });
   courseId = course.id;
-  const [videoLesson, pdfLesson] = course.modules[0].lessons.map((l) => l.id);
+  const [videoLesson, pdfLesson, youtubeLesson, vimeoLesson] = course.modules[0].lessons.map((l) => l.id);
 
   // --- the instructor uploads, through the builder's own control -------------------
   const builder = await instructor.context.newPage();
@@ -215,6 +219,15 @@ async function main() {
   check("a file over the limit is refused in the browser with the sizes named",
     /limit is 50(\.0)? MB/.test(refusal ?? ""), refusal ?? "no message");
   await readingRow.screenshot({ path: join(dir, "builder-too-large.png") });
+
+  // A link the player cannot play is flagged where it can be fixed.
+  const warning = "Learners may not be able to play this link";
+  const warnsOnDrive = (await builder.locator("details", { hasText: "Drive video" }).getByText(warning).count()) > 0;
+  const warnsOnYoutube = (await builder.locator("details", { hasText: "Guest lecture" }).getByText(warning).count()) > 0;
+  check("the builder warns about a video link learners cannot play", warnsOnDrive);
+  check("  but not about a YouTube link", !warnsOnYoutube);
+  const hint = await builder.locator("details", { hasText: "Guest lecture" }).getByText("upload to YouTube or Vimeo as unlisted").count();
+  check("  and a video lesson's upload box points longer videos to YouTube or Vimeo", hint > 0);
 
   const rows = await prisma.lesson.findMany({ where: { id: { in: [videoLesson, pdfLesson] } }, select: { id: true, type: true, contentUrl: true } });
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -283,6 +296,21 @@ async function main() {
     `HTTP ${pdf.status()} ${pdf.headers()["content-type"]}`);
   await player.waitForTimeout(1500);
   await player.screenshot({ path: join(dir, "player-pdf.png") });
+
+  // --- pasted YouTube and Vimeo links -----------------------------------------------------
+  for (const [lessonId, name, expected] of [
+    [youtubeLesson, "YouTube", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&playsinline=1"],
+    [vimeoLesson, "unlisted Vimeo", "https://player.vimeo.com/video/123456789?h=abc123def4&byline=0&portrait=0"],
+  ] as const) {
+    await player.goto(`${BASE}/student/courses/${course.slug}/lessons/${lessonId}`, { waitUntil: "load" });
+    const frame = await player.locator("iframe").getAttribute("src").catch(() => null);
+    const videos = await player.locator("video").count();
+    check(`a pasted ${name} link plays in that provider's player, not a broken <video>`,
+      frame === expected && videos === 0, frame ?? "no frame");
+  }
+  await player.goto(`${BASE}/student/courses/${course.slug}/lessons/${youtubeLesson}`, { waitUntil: "load" });
+  await player.waitForTimeout(3000);
+  await player.screenshot({ path: join(dir, "player-youtube.png") });
 
   // --- the questions an attacker asks ----------------------------------------------------
   const outsiderPage = await outsider.context.newPage();

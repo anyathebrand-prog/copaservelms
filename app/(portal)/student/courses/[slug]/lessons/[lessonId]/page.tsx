@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
 import { getCourseForPlayer } from "@/lib/student";
 import { lessonMediaSrc } from "@/lib/lesson-media";
+import { embedSrc, parseVideoLink } from "@/lib/video-embed";
 import { ProgressBar } from "@/components/student/progress-bar";
 import { CourseComplete } from "@/components/student/course-complete";
 import { completeLessonAction } from "../../actions";
@@ -41,6 +42,9 @@ export default async function LessonPage({
   // An uploaded file resolves through a route that re-checks enrolment on
   // every load; a pasted link is used as the instructor gave it.
   const src = lessonMediaSrc(lesson.id, lesson.contentUrl);
+  // Only for a pasted link — an uploaded file is never a YouTube page.
+  const videoLink = lesson.type === "VIDEO" && src === lesson.contentUrl ? parseVideoLink(src) : null;
+  const embed = videoLink ? embedSrc(videoLink, "lesson") : null;
 
   // The course is finished when every lesson is, which is the moment the
   // player has to stop being a list of lessons and say what happens next.
@@ -64,7 +68,21 @@ export default async function LessonPage({
           <h1 className="mt-2 font-display text-2xl font-bold tracking-tight">{lesson.title}</h1>
         </header>
 
-        {lesson.type === "VIDEO" && src ? (
+        {lesson.type === "VIDEO" && embed ? (
+          // A YouTube or Vimeo link plays in the provider's own player: a
+          // <video> element can only play a file, and given a watch page it
+          // shows a black box.
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
+            <iframe
+              src={embed}
+              title={lesson.title}
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="absolute inset-0 size-full"
+            />
+          </div>
+        ) : lesson.type === "VIDEO" && src ? (
           <video
             controls
             controlsList="nodownload"

@@ -9,6 +9,7 @@ import {
 } from "@/app/(portal)/instructor/actions";
 import { LessonUpload } from "@/components/instructor/lesson-upload";
 import { isStoredLessonMedia, lessonMediaSrc, storedFileName } from "@/lib/lesson-media";
+import { isDirectMediaFile, parseVideoLink } from "@/lib/video-embed";
 
 /** Lesson types whose content is a file, and so can take an upload. */
 const FILE_TYPES = ["VIDEO", "PDF", "AUDIO"];
@@ -151,6 +152,11 @@ export function CurriculumEditor({
                           accept={upload.accept}
                           maxBytes={upload.maxBytes}
                           current={current}
+                          hint={
+                            lesson.type === "VIDEO"
+                              ? "Longer videos: upload to YouTube or Vimeo as unlisted, and paste the link below."
+                              : undefined
+                          }
                         />
                       ) : null;
                     })()}
@@ -185,13 +191,32 @@ export function CurriculumEditor({
                           action reads a missing field as "unchanged". */}
                       {!isStoredLessonMedia(lesson.contentUrl) && (
                         <Field
-                          label={FILE_TYPES.includes(lesson.type) ? "Or link to a file hosted elsewhere" : "Content URL"}
+                          label={
+                            lesson.type === "VIDEO"
+                              ? "Or paste a YouTube or Vimeo link"
+                              : FILE_TYPES.includes(lesson.type)
+                                ? "Or link to a file hosted elsewhere"
+                                : "Content URL"
+                          }
                           name="contentUrl"
                           defaultValue={lesson.contentUrl ?? ""}
-                          placeholder="https://…"
+                          placeholder={lesson.type === "VIDEO" ? "https://youtu.be/… or https://vimeo.com/…" : "https://…"}
                           disabled={locked}
                         />
                       )}
+
+                      {/* Said here, where it can be fixed, rather than
+                          discovered by a learner staring at a black box. */}
+                      {lesson.type === "VIDEO" &&
+                        lesson.contentUrl &&
+                        !isStoredLessonMedia(lesson.contentUrl) &&
+                        !parseVideoLink(lesson.contentUrl) &&
+                        !isDirectMediaFile(lesson.contentUrl) && (
+                          <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+                            Learners may not be able to play this link. Use a YouTube or Vimeo link,
+                            a direct link to a video file, or upload the video above.
+                          </p>
+                        )}
 
                       <label className="block">
                         <span className="mb-1.5 block text-sm font-medium">Body</span>
