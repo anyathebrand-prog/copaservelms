@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/roles";
 import { getCourseForPlayer } from "@/lib/student";
+import { lessonMediaSrc } from "@/lib/lesson-media";
 import { ProgressBar } from "@/components/student/progress-bar";
 import { CourseComplete } from "@/components/student/course-complete";
 import { completeLessonAction } from "../../actions";
@@ -37,6 +38,9 @@ export default async function LessonPage({
   const previous = index > 0 ? lessons[index - 1] : null;
   const next = index < lessons.length - 1 ? lessons[index + 1] : null;
   const courseQuizzes = data.course.quizzes.filter((quiz) => quiz.lessonId === lesson.id);
+  // An uploaded file resolves through a route that re-checks enrolment on
+  // every load; a pasted link is used as the instructor gave it.
+  const src = lessonMediaSrc(lesson.id, lesson.contentUrl);
 
   // The course is finished when every lesson is, which is the moment the
   // player has to stop being a list of lessons and say what happens next.
@@ -60,25 +64,25 @@ export default async function LessonPage({
           <h1 className="mt-2 font-display text-2xl font-bold tracking-tight">{lesson.title}</h1>
         </header>
 
-        {lesson.type === "VIDEO" && lesson.contentUrl ? (
+        {lesson.type === "VIDEO" && src ? (
           <video
             controls
             controlsList="nodownload"
             playsInline
             className="aspect-video w-full rounded-2xl bg-black"
-            src={lesson.contentUrl}
+            src={src}
           />
-        ) : lesson.type === "PDF" && lesson.contentUrl ? (
+        ) : lesson.type === "PDF" && src ? (
           <iframe
-            src={lesson.contentUrl}
+            src={src}
             title={lesson.title}
             className="h-[70vh] w-full rounded-2xl border border-border"
           />
-        ) : lesson.type === "AUDIO" && lesson.contentUrl ? (
-          <audio controls className="w-full" src={lesson.contentUrl} />
-        ) : lesson.contentUrl ? (
+        ) : lesson.type === "AUDIO" && src ? (
+          <audio controls className="w-full" src={src} />
+        ) : src ? (
           <a
-            href={lesson.contentUrl}
+            href={src}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface-muted"

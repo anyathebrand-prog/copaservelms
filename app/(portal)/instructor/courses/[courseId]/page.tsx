@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CourseCover } from "@/components/course/course-cover";
 import { BANNER_ACCEPT, BANNER_MAX_MB } from "@/lib/course-media";
+import { LESSON_MEDIA_ACCEPT, lessonMediaMaxBytes } from "@/lib/lesson-media";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -26,7 +27,7 @@ export default async function EditCoursePage({
     `/instructor/courses/${courseId}`,
   );
 
-  const [course, categories, quizzes] = await Promise.all([
+  const [course, categories, quizzes, uploadMaxBytes] = await Promise.all([
     getCourseForEditing(courseId, user.id, user.roles),
     prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.quiz.findMany({
@@ -37,6 +38,7 @@ export default async function EditCoursePage({
         _count: { select: { questions: true, attempts: true } },
       },
     }),
+    lessonMediaMaxBytes(),
   ]);
 
   if (!course) notFound();
@@ -332,7 +334,12 @@ export default async function EditCoursePage({
         </form>
       </section>
 
-      <CurriculumEditor courseId={course.id} modules={course.modules} locked={locked} />
+      <CurriculumEditor
+        courseId={course.id}
+        modules={course.modules}
+        locked={locked}
+        upload={{ accept: LESSON_MEDIA_ACCEPT, maxBytes: uploadMaxBytes }}
+      />
 
       <QuizzesSection courseId={course.id} quizzes={quizzes} locked={locked} />
     </div>

@@ -61,7 +61,9 @@
     "verify:video-url": "tsx scripts/verify-video-url.ts",
     "verify:email-links": "tsx --env-file=.env scripts/verify-email-links.ts",
     "verify:earnings": "tsx --env-file=.env scripts/verify-earnings.ts",
-    "verify:sw-cache": "tsx --env-file=.env scripts/verify-sw-cache.ts"
+    "verify:sw-cache": "tsx --env-file=.env scripts/verify-sw-cache.ts",
+    "verify:lesson-media": "tsx --env-file=.env scripts/verify-lesson-media.ts",
+    "verify:lesson-media-browser": "tsx --env-file=.env scripts/verify-lesson-media-browser.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

@@ -20,6 +20,15 @@ export interface StorageDriver {
   signedUrl(key: string, expiresInSeconds: number): Promise<string>;
   /** A URL that does not expire. Only meaningful on a public bucket. */
   publicUrl(key: string): string;
+  /**
+   * A one-shot URL the browser can PUT one file to, at this exact key only.
+   * Lets a large upload go straight to storage instead of through a function.
+   */
+  signedUploadUrl(key: string): Promise<{ url: string; token: string }>;
+  /** What is actually stored at a key, or null if nothing is. */
+  stat(key: string): Promise<{ size: number; contentType: string } | null>;
+  /** The largest single file the bucket accepts, in bytes, or null if unset. */
+  maxFileBytes(): Promise<number | null>;
 }
 
 // `||` not `??`: an env var set to an empty string is a normal way to unset
@@ -36,6 +45,16 @@ export const CERTIFICATE_BUCKET = process.env.SUPABASE_CERTIFICATE_BUCKET || "ce
  * in a database column, which would simply stop loading seven days later.
  */
 export const COURSE_MEDIA_BUCKET = process.env.SUPABASE_COURSE_MEDIA_BUCKET || "course-media";
+
+/**
+ * Lesson videos, PDFs and audio — the course itself.
+ *
+ * Private, unlike banners, because this is what a learner pays for: a public
+ * bucket would let anyone holding one link watch a paid course for free, and
+ * links travel. Nothing in it is ever given a permanent URL. The player signs
+ * a short-lived one per view, and only after checking the viewer is enrolled.
+ */
+export const LESSON_MEDIA_BUCKET = process.env.SUPABASE_LESSON_MEDIA_BUCKET || "lesson-media";
 
 /**
  * Supabase Storage driver.
@@ -91,6 +110,23 @@ class SupabaseStorageDriver implements StorageDriver {
   publicUrl(key: string): string {
     return this.client.storage.from(this.bucket).getPublicUrl(key).data.publicUrl;
   }
+
+  async signedUploadUrl(key: string): Promise<{ url: string; token: string }> {
+    const { data, error } = await this.client.storage.from(this.bucket).createSignedUploadUrl(key);
+    if (error || !data) throw new Error(`Could not sign upload for ${key}: ${error?.message}`);
+    return { url: data.signedUrl, token: data.token };
+  }
+
+  async stat(key: string): Promise<{ size: number; contentType: string } | null> {
+    const { data, error } = await this.client.storage.from(this.bucket).info(key);
+    if (error || !data) return null;
+    return { size: Number(data.size ?? 0), contentType: String(data.contentType ?? "") };
+  }
+
+  async maxFileBytes(): Promise<number | null> {
+    const { data } = await this.client.storage.getBucket(this.bucket);
+    return data?.file_size_limit ?? null;
+  }
 }
 
 /**
@@ -119,6 +155,15 @@ class UnconfiguredStorageDriver implements StorageDriver {
     this.fail();
   }
   publicUrl(): string {
+    this.fail();
+  }
+  async signedUploadUrl(): Promise<{ url: string; token: string }> {
+    this.fail();
+  }
+  async stat(): Promise<{ size: number; contentType: string } | null> {
+    this.fail();
+  }
+  async maxFileBytes(): Promise<number | null> {
     this.fail();
   }
 }

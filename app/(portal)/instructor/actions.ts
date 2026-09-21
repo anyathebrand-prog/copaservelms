@@ -8,15 +8,19 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   addLesson,
   addModule,
+  attachLessonUpload,
   createCourse,
   deleteLesson,
   deleteModule,
   moveLesson,
   moveModule,
+  prepareLessonUpload,
+  removeLessonUpload,
   setCourseStatus,
   updateCourseDetails,
   updateLesson,
   type MutationError,
+  type UploadError,
 } from "@/lib/instructor";
 import type { CourseLevel, CourseStatus, LessonType } from "@/app/generated/prisma/enums";
 
@@ -215,7 +219,10 @@ export async function updateLessonAction(formData: FormData): Promise<void> {
   const result = await updateLesson(String(formData.get("lessonId") ?? ""), user.id, user.roles, {
     title: String(formData.get("title") ?? ""),
     type: (formData.get("type") as LessonType) || undefined,
-    contentUrl: (formData.get("contentUrl") as string) || null,
+    // Absent is not the same as empty. A lesson with an uploaded file has no
+    // link field in the form at all, and reading that as "cleared" would
+    // delete the upload every time the instructor fixed a typo in the title.
+    contentUrl: formData.has("contentUrl") ? (formData.get("contentUrl") as string) || null : undefined,
     content: (formData.get("content") as string) || null,
     durationSeconds: durationRaw === "" ? null : Math.round(Number(durationRaw) * 60),
     isPreview: formData.get("isPreview") === "on",
@@ -223,6 +230,62 @@ export async function updateLessonAction(formData: FormData): Promise<void> {
 
   if (!result.ok) explode(result.error);
   revalidatePath(`/instructor/courses/${result.data.courseId}`);
+}
+
+/**
+ * Lesson uploads, called from the upload control rather than a plain form.
+ *
+ * These return a message instead of throwing: the control shows the reason
+ * next to the file the instructor just chose, which a thrown error — a
+ * generic error page — would take away from them.
+ */
+export type UploadActionResult = { ok: true } | { ok: false; message: string };
+
+const UPLOAD_MESSAGES: Record<UploadError, string> = {
+  NOT_FOUND: "That lesson no longer exists.",
+  FORBIDDEN: "That upload does not belong to this lesson.",
+  INVALID: "That upload is not valid.",
+  LOCKED: "Withdraw the course to draft before changing its lessons.",
+  UNSUPPORTED_TYPE: "Upload a PDF, a video (MP4, WebM or MOV) or audio (MP3, M4A, WAV, OGG).",
+  TOO_LARGE: "That file is too large.",
+  EMPTY: "That file is empty.",
+  UNCONFIGURED: "File storage is not set up on this server.",
+  MISSING: "The upload did not arrive. Please try again.",
+};
+
+function uploadMessage(error: UploadError, maxBytes?: number): string {
+  if (error === "TOO_LARGE" && maxBytes) {
+    return `That file is too large — the limit is ${Math.floor(maxBytes / (1024 * 1024))} MB.`;
+  }
+  return UPLOAD_MESSAGES[error];
+}
+
+export async function prepareLessonUploadAction(
+  lessonId: string,
+  file: { name: string; type: string; size: number },
+): Promise<{ ok: true; key: string; url: string } | { ok: false; message: string }> {
+  const user = await requireInstructor();
+  const result = await prepareLessonUpload(lessonId, user.id, user.roles, file);
+  if (!result.ok) return { ok: false, message: uploadMessage(result.error, result.maxBytes) };
+  return { ok: true, key: result.data.key, url: result.data.url };
+}
+
+export async function attachLessonUploadAction(lessonId: string, key: string): Promise<UploadActionResult> {
+  const user = await requireInstructor();
+  const result = await attachLessonUpload(lessonId, user.id, user.roles, key);
+  if (!result.ok) return { ok: false, message: uploadMessage(result.error) };
+
+  revalidatePath(`/instructor/courses/${result.data.courseId}`);
+  return { ok: true };
+}
+
+export async function removeLessonUploadAction(lessonId: string): Promise<UploadActionResult> {
+  const user = await requireInstructor();
+  const result = await removeLessonUpload(lessonId, user.id, user.roles);
+  if (!result.ok) return { ok: false, message: uploadMessage(result.error) };
+
+  revalidatePath(`/instructor/courses/${result.data.courseId}`);
+  return { ok: true };
 }
 
 export async function deleteLessonAction(formData: FormData): Promise<void> {

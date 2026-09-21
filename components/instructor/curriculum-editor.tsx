@@ -7,6 +7,11 @@ import {
   moveModuleAction,
   updateLessonAction,
 } from "@/app/(portal)/instructor/actions";
+import { LessonUpload } from "@/components/instructor/lesson-upload";
+import { isStoredLessonMedia, lessonMediaSrc, storedFileName } from "@/lib/lesson-media";
+
+/** Lesson types whose content is a file, and so can take an upload. */
+const FILE_TYPES = ["VIDEO", "PDF", "AUDIO"];
 
 /**
  * Curriculum builder (PRD §10.3).
@@ -53,10 +58,13 @@ export function CurriculumEditor({
   courseId,
   modules,
   locked,
+  upload,
 }: {
   courseId: string;
   modules: Module[];
   locked: boolean;
+  /** What the upload control accepts, read on the server from the bucket. */
+  upload: { accept: string; maxBytes: number };
 }) {
   return (
     <section className="space-y-4">
@@ -117,6 +125,36 @@ export function CurriculumEditor({
                   </summary>
 
                   <div className="mt-4 space-y-3">
+                    {(() => {
+                      // Rendered here, outside the lesson form, so saving the
+                      // title never touches the file and choosing a file never
+                      // submits half-edited fields.
+                      const stored = isStoredLessonMedia(lesson.contentUrl);
+                      const current = stored
+                        ? { name: storedFileName(lesson.contentUrl!), viewHref: lessonMediaSrc(lesson.id, lesson.contentUrl)! }
+                        : null;
+
+                      if (locked) {
+                        return current ? (
+                          <p className="text-sm text-muted-foreground">
+                            File: {current.name} ·{" "}
+                            <a href={current.viewHref} target="_blank" rel="noopener" className="font-medium text-brand hover:underline">
+                              View
+                            </a>
+                          </p>
+                        ) : null;
+                      }
+
+                      return stored || FILE_TYPES.includes(lesson.type) ? (
+                        <LessonUpload
+                          lessonId={lesson.id}
+                          accept={upload.accept}
+                          maxBytes={upload.maxBytes}
+                          current={current}
+                        />
+                      ) : null;
+                    })()}
+
                     <form action={updateLessonAction} className="space-y-3">
                       <input type="hidden" name="lessonId" value={lesson.id} />
 
@@ -127,7 +165,10 @@ export function CurriculumEditor({
                           <select
                             name="type"
                             defaultValue={lesson.type}
-                            disabled={locked}
+                            // Fixed by the uploaded file while one is attached:
+                            // a PDF relabelled as video would not play.
+                            disabled={locked || isStoredLessonMedia(lesson.contentUrl)}
+                            title={isStoredLessonMedia(lesson.contentUrl) ? "Set by the uploaded file" : undefined}
                             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand disabled:opacity-60"
                           >
                             {LESSON_TYPES.map((type) => (
@@ -139,13 +180,18 @@ export function CurriculumEditor({
                         </label>
                       </div>
 
-                      <Field
-                        label="Content URL"
-                        name="contentUrl"
-                        defaultValue={lesson.contentUrl ?? ""}
-                        placeholder="https://…"
-                        disabled={locked}
-                      />
+                      {/* Left out entirely once a file is uploaded, so the
+                          form cannot overwrite the upload with a link. The
+                          action reads a missing field as "unchanged". */}
+                      {!isStoredLessonMedia(lesson.contentUrl) && (
+                        <Field
+                          label={FILE_TYPES.includes(lesson.type) ? "Or link to a file hosted elsewhere" : "Content URL"}
+                          name="contentUrl"
+                          defaultValue={lesson.contentUrl ?? ""}
+                          placeholder="https://…"
+                          disabled={locked}
+                        />
+                      )}
 
                       <label className="block">
                         <span className="mb-1.5 block text-sm font-medium">Body</span>

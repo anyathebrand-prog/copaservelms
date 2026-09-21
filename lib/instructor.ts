@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import type { CourseLevel, CourseStatus, LessonType } from "@/app/generated/prisma/enums";
+import {
+  discardLessonMedia,
+  inspectLessonUpload,
+  isStoredLessonMedia,
+  keyBelongsTo,
+  lessonMediaKey,
+  signLessonUpload,
+  type UploadRefusal,
+} from "@/lib/lesson-media";
 
 /**
  * Instructor course builder (PRD §10).
@@ -363,7 +372,7 @@ export async function deleteModule(
 ): Promise<Result<{ courseId: string }>> {
   const courseModule = await prisma.module.findUnique({
     where: { id: moduleId },
-    select: { courseId: true, position: true },
+    select: { courseId: true, position: true, lessons: { select: { contentUrl: true } } },
   });
   if (!courseModule) return { ok: false, error: "NOT_FOUND" };
 
@@ -385,6 +394,10 @@ export async function deleteModule(
       WHERE "courseId" = ${courseModule.courseId}::uuid AND "position" < 0
     `,
   ]);
+
+  // The cascade removed the lessons; their files are not in the database, so
+  // nothing cascades to them.
+  await Promise.all(courseModule.lessons.map((lesson) => discardLessonMedia(lesson.contentUrl)));
 
   return { ok: true, data: { courseId: courseModule.courseId } };
 }
@@ -447,6 +460,10 @@ export async function addLesson(
   const guard = await assertEditable(courseModule.courseId, userId, roles);
   if (!guard.ok) return guard;
   if (!input.title.trim()) return { ok: false, error: "INVALID" };
+  // A stored file arrives only through the upload flow, which checks it
+  // belongs to this lesson. Typed in by hand, a reference is a way to point
+  // at someone else's.
+  if (isStoredLessonMedia(input.contentUrl)) return { ok: false, error: "INVALID" };
 
   const last = await prisma.lesson.findFirst({
     where: { moduleId },
@@ -479,25 +496,45 @@ export async function updateLesson(
 ): Promise<Result<{ courseId: string }>> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { module: { select: { courseId: true } } },
+    select: { contentUrl: true, module: { select: { courseId: true } } },
   });
   if (!lesson) return { ok: false, error: "NOT_FOUND" };
 
   const guard = await assertEditable(lesson.module.courseId, userId, roles);
   if (!guard.ok) return guard;
   if (input.title !== undefined && !input.title.trim()) return { ok: false, error: "INVALID" };
+  // Keeping the lesson's own stored file is fine; naming any other is not.
+  // Attaching goes through attachLessonUpload, which checks the file is this
+  // lesson's.
+  if (isStoredLessonMedia(input.contentUrl) && input.contentUrl !== lesson.contentUrl) {
+    return { ok: false, error: "INVALID" };
+  }
+
+  // While an uploaded file stays attached, the lesson's type is the file's:
+  // it was set from what storage recorded, and a PDF relabelled as a video
+  // would reach learners as a player that cannot play it.
+  const keepsUpload =
+    isStoredLessonMedia(lesson.contentUrl) &&
+    (input.contentUrl === undefined || input.contentUrl === lesson.contentUrl);
 
   await prisma.lesson.update({
     where: { id: lessonId },
     data: {
       title: input.title?.trim(),
-      type: input.type,
+      type: keepsUpload ? undefined : input.type,
       contentUrl: input.contentUrl,
       content: input.content,
       durationSeconds: input.durationSeconds,
       isPreview: input.isPreview,
     },
   });
+
+  // Replaced by a pasted link, or cleared: the uploaded file is no longer
+  // anything's, so it goes. After the update, so a failure cannot leave the
+  // lesson pointing at nothing.
+  if (input.contentUrl !== undefined && input.contentUrl !== lesson.contentUrl) {
+    await discardLessonMedia(lesson.contentUrl);
+  }
 
   return { ok: true, data: { courseId: lesson.module.courseId } };
 }
@@ -509,7 +546,7 @@ export async function deleteLesson(
 ): Promise<Result<{ courseId: string }>> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { moduleId: true, position: true, module: { select: { courseId: true } } },
+    select: { moduleId: true, position: true, contentUrl: true, module: { select: { courseId: true } } },
   });
   if (!lesson) return { ok: false, error: "NOT_FOUND" };
 
@@ -533,6 +570,8 @@ export async function deleteLesson(
       WHERE "moduleId" = ${lesson.moduleId}::uuid AND "position" < 0
     `,
   ]);
+
+  await discardLessonMedia(lesson.contentUrl);
 
   return { ok: true, data: { courseId: lesson.module.courseId } };
 }
@@ -570,6 +609,144 @@ export async function moveLesson(
   ]);
 
   return { ok: true, data: { courseId: lesson.module.courseId } };
+}
+
+// ---------------------------------------------------------------------------
+// Lesson files
+// ---------------------------------------------------------------------------
+
+export type UploadError = MutationError | UploadRefusal | "MISSING";
+
+/** The lesson and its course, if the actor may change its content right now. */
+async function editableLesson(lessonId: string, userId: string, roles: ActorRole[]) {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, contentUrl: true, module: { select: { courseId: true } } },
+  });
+  if (!lesson) return { ok: false as const, error: "NOT_FOUND" as const };
+
+  const guard = await assertEditable(lesson.module.courseId, userId, roles);
+  if (!guard.ok) return guard;
+
+  return { ok: true as const, data: { ...lesson, courseId: lesson.module.courseId } };
+}
+
+/**
+ * Step one of an upload: permission to put one file at one key.
+ *
+ * The same edit rules as any curriculum change — the owner or an admin, and
+ * only while the course is in draft. A live course's lessons are what
+ * enrolled learners are partway through.
+ */
+export async function prepareLessonUpload(
+  lessonId: string,
+  userId: string,
+  roles: ActorRole[],
+  file: { name: string; type: string; size: number },
+): Promise<
+  | { ok: true; data: { key: string; url: string; token: string } }
+  | { ok: false; error: UploadError; maxBytes?: number }
+> {
+  const lesson = await editableLesson(lessonId, userId, roles);
+  if (!lesson.ok) return lesson;
+
+  const signed = await signLessonUpload({
+    courseId: lesson.data.courseId,
+    lessonId,
+    fileName: file.name,
+    contentType: file.type,
+    size: file.size,
+  });
+  if (!signed.ok) return signed;
+
+  return { ok: true, data: { key: signed.key, url: signed.url, token: signed.token } };
+}
+
+/**
+ * Step two: the browser says the upload finished. Attach it to the lesson.
+ *
+ * Ownership is checked again rather than trusted from step one — this is a
+ * separate request, and the key arrives from the browser. It has to sit under
+ * this lesson's own prefix, and storage has to confirm a file of an accepted
+ * type is really there. The lesson's type follows the file, so a PDF can
+ * never be attached to a lesson the player would try to show as a video.
+ */
+export async function attachLessonUpload(
+  lessonId: string,
+  userId: string,
+  roles: ActorRole[],
+  key: string,
+): Promise<Result<{ courseId: string }> | { ok: false; error: UploadError }> {
+  const lesson = await editableLesson(lessonId, userId, roles);
+  if (!lesson.ok) return lesson;
+
+  if (!keyBelongsTo(key, lesson.data.courseId, lessonId)) return { ok: false, error: "FORBIDDEN" };
+
+  const arrived = await inspectLessonUpload(key);
+  if (!arrived.ok) return arrived;
+
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: { contentUrl: arrived.ref, type: arrived.lessonType },
+  });
+
+  // Replacing a file: the old one belongs to nothing now.
+  if (lesson.data.contentUrl !== arrived.ref) await discardLessonMedia(lesson.data.contentUrl);
+
+  return { ok: true, data: { courseId: lesson.data.courseId } };
+}
+
+/** Take a lesson's uploaded file off it, and delete the file. */
+export async function removeLessonUpload(
+  lessonId: string,
+  userId: string,
+  roles: ActorRole[],
+): Promise<Result<{ courseId: string }>> {
+  const lesson = await editableLesson(lessonId, userId, roles);
+  if (!lesson.ok) return lesson;
+  if (!isStoredLessonMedia(lesson.data.contentUrl)) return { ok: true, data: { courseId: lesson.data.courseId } };
+
+  await prisma.lesson.update({ where: { id: lessonId }, data: { contentUrl: null } });
+  await discardLessonMedia(lesson.data.contentUrl);
+
+  return { ok: true, data: { courseId: lesson.data.courseId } };
+}
+
+/**
+ * Who may open a lesson's stored file: anyone enrolled in the course, and the
+ * course's own instructor or an admin — the builder needs to show an
+ * instructor what they uploaded.
+ *
+ * Returns the storage key only when access is allowed, and only when the key
+ * really is this lesson's; everything else is NOT_FOUND, so the route cannot
+ * be used to learn which lessons exist or which have files.
+ */
+export async function lessonMediaForViewer(
+  lessonId: string,
+  userId: string,
+  roles: ActorRole[],
+): Promise<{ ok: true; key: string } | { ok: false }> {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      contentUrl: true,
+      module: { select: { courseId: true, course: { select: { instructorId: true } } } },
+    },
+  });
+  if (!lesson || !isStoredLessonMedia(lesson.contentUrl)) return { ok: false };
+
+  const courseId = lesson.module.courseId;
+  const key = lessonMediaKey(lesson.contentUrl);
+  if (!key || !keyBelongsTo(key, courseId, lessonId)) return { ok: false };
+
+  const isOwner = lesson.module.course.instructorId === userId || isAdmin(roles);
+  if (isOwner) return { ok: true, key };
+
+  const enrolled = await prisma.enrollment.findFirst({
+    where: { userId, courseId, status: { in: ["ACTIVE", "COMPLETED"] } },
+    select: { id: true },
+  });
+  return enrolled ? { ok: true, key } : { ok: false };
 }
 
 /** Slugify, then suffix until free — slug is unique across all courses. */

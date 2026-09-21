@@ -8,9 +8,33 @@
  *   npx tsx --env-file=.env scripts/setup-storage.ts
  */
 import { createClient } from "@supabase/supabase-js";
-import { CERTIFICATE_BUCKET, COURSE_MEDIA_BUCKET } from "../lib/storage";
+import { CERTIFICATE_BUCKET, COURSE_MEDIA_BUCKET, LESSON_MEDIA_BUCKET } from "../lib/storage";
 
 const BUCKETS = [
+  {
+    name: LESSON_MEDIA_BUCKET,
+    // Private: this is the paid content itself. Viewed only through signed
+    // URLs handed out after an enrolment check.
+    public: false,
+    // Supabase's free plan refuses any file over 50MB whatever this says. On a
+    // paid plan, raise it here and in the dashboard — the app reads the
+    // bucket's limit, so nothing else changes.
+    limit: 50 * 1024 * 1024,
+    types: [
+      "application/pdf",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "audio/mpeg",
+      "audio/mp4",
+      "audio/x-m4a",
+      "audio/aac",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/webm",
+      "audio/ogg",
+    ],
+  },
   { name: CERTIFICATE_BUCKET, public: false, limit: 10 * 1024 * 1024, types: ["application/pdf"] },
   {
     name: COURSE_MEDIA_BUCKET,
