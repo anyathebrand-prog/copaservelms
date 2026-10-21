@@ -172,7 +172,11 @@ export function AuthForm({
       });
       setPending(false);
       if (error) return setError(error.message);
-      return setNotice("Check your email to confirm your account, then sign in.");
+      // Supabase sends nothing when the address already has an account, and
+      // says so to nobody — so the notice has to cover that case itself.
+      return setNotice(
+        "Check your email to confirm your account, then sign in. If you already have an account — including one made with Google — no email is sent; sign in instead.",
+      );
     }
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
