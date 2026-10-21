@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { MailCheck } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 /**
  * Ask for a reset link.
@@ -41,8 +42,18 @@ export function ForgotPasswordForm() {
       // the wrong move and the person needs to know to wait. Everything else
       // is reported as success: a failure that distinguishes a real address
       // from a fake one is the leak this form exists to avoid.
-      if (failure && /rate|too many/i.test(failure.message)) {
-        setError("Too many attempts. Wait a few minutes and try again.");
+      //
+      // Matched on the code, with the old text check kept as a fallback for a
+      // server that does not send one. The two codes differ: one counts the
+      // emails this project has sent, the other the requests from this device.
+      const rateLimited =
+        failure &&
+        (failure.code === "over_email_send_rate_limit" ||
+          failure.code === "over_request_rate_limit" ||
+          /rate limit|too many/i.test(failure.message));
+
+      if (rateLimited) {
+        setError(authErrorMessage(failure));
         return;
       }
 

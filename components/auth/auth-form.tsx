@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { browserSupabaseConfigured, createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { formatPhone, normalizePhone, PHONE_MESSAGES } from "@/lib/phone";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 /**
  * Sign-in / sign-up form covering the methods in PRD §8.1.
@@ -84,7 +85,7 @@ export function AuthForm({
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithOtp({ phone: normalized.e164 });
       if (error) {
-        setError(error.message);
+        setError(authErrorMessage(error));
         return;
       }
       setCodeSent(true);
@@ -171,7 +172,7 @@ export function AuthForm({
         },
       });
       setPending(false);
-      if (error) return setError(error.message);
+      if (error) return setError(authErrorMessage(error));
       // Supabase sends nothing when the address already has an account, and
       // says so to nobody — so the notice has to cover that case itself.
       return setNotice(
@@ -181,7 +182,7 @@ export function AuthForm({
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setPending(false);
-      if (error) return setError(error.message);
+      if (error) return setError(authErrorMessage(error));
 
       router.push(safeNext);
       // Server Components cache the previous (signed-out) render.
@@ -203,7 +204,7 @@ export function AuthForm({
         options: { emailRedirectTo: callbackUrl },
       });
       setPending(false);
-      if (error) return setError(error.message);
+      if (error) return setError(authErrorMessage(error));
       setNotice("Magic link sent. Check your inbox.");
     } catch (cause) {
       reportFailure(cause);
@@ -222,7 +223,7 @@ export function AuthForm({
       });
       if (error) {
         setPending(false);
-        setError(error.message);
+        setError(authErrorMessage(error));
       }
     } catch (cause) {
       reportFailure(cause);
