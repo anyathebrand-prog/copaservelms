@@ -9,29 +9,49 @@
  * in BYPASS_ROUTES and never cached.
  *
  * If you add a page that reads the signed-in user (getCurrentUser, requireUser,
- * requireRole) or whose answer must be current, add its prefix here.
+ * requireRole) or whose answer must be current, add its prefix to BYPASS_ROUTES.
+ *
+ * A second rule, learned the hard way: a route that can answer with a redirect
+ * must never be precached. A service worker is not allowed to hand a redirected
+ * response back for a page navigation — the browser rejects it outright and
+ * shows ERR_FAILED instead of the page. Everything the middleware matcher
+ * covers can redirect, so everything it covers is bypassed below.
  */
 
 /** Public pages, identical for every visitor, fetched ahead of time. */
-export const PRECACHE_ROUTES = ["/", "/courses", "/contact", "/privacy", "/terms", "/offline",  // Signed-in areas: dashboards, earnings, bank details, payouts.
-  "/student",
-  "/instructor",
-  "/admin",
-  "/portal",
+export const PRECACHE_ROUTES = [
+  "/",
+  "/courses",
   "/courses/",
-  "/teach",
-  "/login",
-  "/signup",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/offline",
   "/forgot-password",
   "/reset-password",
 ] as const;
 
 /** Never cached, never served from cache. Matched by prefix. */
 export const BYPASS_ROUTES = [
-
-// Signing in, and everything around it.
+  // Signing in, and everything around it.
   "/two-factor",
   "/auth",
+
+  // Every path the middleware matcher covers. Each of these answers with a
+  // redirect in at least one case — /portal in every case, since it exists
+  // only to work out which dashboard is yours and send you there. Caching a
+  // redirect broke sign-in completely: the browser refused the response and
+  // showed ERR_FAILED after both email and Google sign-in.
+  "/portal",
+  "/student",
+  "/instructor",
+  "/admin",
+  "/login",
+  "/signup",
+
+  // Reads the signed-in user to show their own application, so it differs by
+  // visitor even though it is a public page.
+  "/teach",
 
   // Must always be current. A cached answer is a wrong answer: a revoked
   // certificate would still look valid, a payment would still look pending.
