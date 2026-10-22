@@ -1,0 +1,151 @@
+<!--
+  Supabase → Authentication → Email Templates → "Confirm signup".
+
+  Kept here because Supabase stores templates in its dashboard and nowhere
+  else: without a copy in the repo there is no history, no review, and no way
+  to tell what changed when an email starts looking wrong.
+
+  {{ .ConfirmationURL }} is filled in by Supabase. Leave it exactly as it is.
+
+  The logo is a real file in this repo, at public/email/, baked onto the header
+  green rather than left transparent — older Outlook renders PNG alpha as a
+  grey box, and this one sits on a coloured band.
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Confirm your email · CopaServe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; padding:0; background:#eef3ee; }
+    a { text-decoration:none; }
+    @media only screen and (max-width:620px) {
+      .container { width:100% !important; }
+      .px { padding-left:24px !important; padding-right:24px !important; }
+      .headline { font-size:34px !important; line-height:38px !important; }
+      .btn a { display:block !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#eef3ee;">
+
+  <!-- Inbox preview text -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+    One tap and your CopaServe account is live. Confirm your email to start learning.
+    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef3ee;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;">
+
+          <!-- Header band -->
+          <tr>
+            <td class="px" style="background:#0a510e;padding:28px 44px;">
+              <a href="https://www.copaserve.com.ng" target="_blank" style="display:inline-block;">
+                <img src="https://www.copaserve.com.ng/email/copaserve-logo-white.png"
+                     width="200" height="56" alt="CopaServe"
+                     style="display:block;width:200px;height:auto;border:0;outline:none;font-family:'Space Grotesk',Arial,sans-serif;font-size:22px;font-weight:700;color:#ffffff;">
+              </a>
+            </td>
+          </tr>
+
+          <!-- Hero -->
+          <tr>
+            <td class="px" style="background:#0a510e;padding:8px 44px 44px 44px;">
+              <h1 class="headline" style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:44px;line-height:48px;font-weight:700;color:#ffffff;letter-spacing:-1px;">
+                One tap and<br>you&rsquo;re in.
+              </h1>
+              <p style="margin:16px 0 0 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#dcf8dd;max-width:440px;">
+                Confirm your email so we know it&rsquo;s really you. Then your CopaServe account is live and your first course is a click away.
+              </p>
+
+              <!-- Button -->
+              <table role="presentation" class="btn" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
+                <tr>
+                  <td align="center" style="background:#05ff12;border-radius:12px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank"
+                       style="display:inline-block;padding:16px 34px;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:17px;font-weight:700;color:#04210a;border-radius:12px;">
+                      Confirm my email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- What happens next -->
+          <tr>
+            <td class="px" style="padding:40px 44px 8px 44px;">
+              <p style="margin:0 0 20px 0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;color:#0d140e;">
+                After you confirm
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="top" style="width:40px;padding-bottom:18px;">
+                    <div style="width:28px;height:28px;line-height:28px;text-align:center;border-radius:14px;background:#dcf8dd;font-family:'Space Grotesk',Arial,sans-serif;font-size:14px;font-weight:700;color:#0a510e;">1</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:18px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3b463c;">
+                    <strong style="color:#0d140e;font-weight:600;">Set up your profile.</strong> Tell us what you want to learn so we can point you to the right courses.
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" style="width:40px;padding-bottom:18px;">
+                    <div style="width:28px;height:28px;line-height:28px;text-align:center;border-radius:14px;background:#dcf8dd;font-family:'Space Grotesk',Arial,sans-serif;font-size:14px;font-weight:700;color:#0a510e;">2</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:18px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3b463c;">
+                    <strong style="color:#0d140e;font-weight:600;">Pick a course.</strong> Learn at your own pace, on any device, without burning data.
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" style="width:40px;">
+                    <div style="width:28px;height:28px;line-height:28px;text-align:center;border-radius:14px;background:#dcf8dd;font-family:'Space Grotesk',Arial,sans-serif;font-size:14px;font-weight:700;color:#0a510e;">3</div>
+                  </td>
+                  <td valign="top" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3b463c;">
+                    <strong style="color:#0d140e;font-weight:600;">Get certified.</strong> Finish strong and earn a certificate anyone can verify.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td class="px" style="padding:32px 44px 40px 44px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f4;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5b665c;">
+                    Button not working? Paste this link into your browser:<br>
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#0a510e;word-break:break-all;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="px" style="border-top:1px solid #e6ebe6;padding:24px 44px 32px 44px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#7a857b;">
+              Didn&rsquo;t sign up for CopaServe? You can ignore this email &mdash; the account stays unconfirmed, and nobody can sign in with it.
+              <br><br>
+              <a href="https://www.copaserve.com.ng" target="_blank" style="color:#0a510e;font-weight:600;">copaserve.com.ng</a>
+              &nbsp;&nbsp;|&nbsp;&nbsp;
+              <a href="mailto:info@copaserve.com.ng" style="color:#7a857b;">info@copaserve.com.ng</a>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
